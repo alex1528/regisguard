@@ -1,0 +1,11 @@
+{
+  "domains": [],
+  "settings": {
+    "web_root": "/var/www/construction_page",
+    "nginx_conf": "/etc/nginx/conf.d/regisguard.conf",
+    "ssl_dir": "/etc/letsencrypt/live",
+    "ssl_global_enabled": false,
+    "force_https_redirect": true,
+    "allowed_ips": ""
+  }
+}

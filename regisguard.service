@@ -1,0 +1,26 @@
+[Unit]
+Description=RegisGuard Domain Management Service
+After=network.target nginx.service
+Wants=nginx.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/regisguard
+ExecStart=/opt/regisguard/venv/bin/python /opt/regisguard/app.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/opt/regisguard/logs/app.log
+StandardError=append:/opt/regisguard/logs/error.log
+
+# Environment variables (override in /etc/systemd/system/regisguard.service.d/override.conf)
+Environment=REGISGUARD_ALLOWED_IPS=
+Environment=REGISGUARD_ADMIN_PASSWORD=admin123
+Environment=REGISGUARD_SECRET_KEY=change-me-in-production
+
+# Security
+NoNewPrivileges=false
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

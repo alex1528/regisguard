@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RegisGuard - 登录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
+        body { background: radial-gradient(circle at top right, #0a1128, #020617); color: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 3rem 2.5rem; width: 360px; text-align: center; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .login-box h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .login-box p { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
+        .login-box input { width: 100%; padding: 10px 14px; border: 1px solid #334155; border-radius: 8px; background: rgba(255,255,255,0.05); color: #f1f5f9; font-size: 0.95rem; outline: none; margin-bottom: 1rem; }
+        .login-box input:focus { border-color: #3b82f6; }
+        .login-box button { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #3b82f6; color: #fff; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
+        .login-box button:hover { background: #2563eb; }
+        .error-msg { color: #f87171; font-size: 0.8rem; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>RegisGuard</h1>
+        <p>域名建设中页面管理系统</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="error-msg">{{ message }}</div>
+        {% endfor %}
+        {% endwith %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="password" name="password" placeholder="请输入管理密码" required autofocus>
+            <button type="submit">登录</button>
+        </form>
+    </div>
+</body>
+</html>

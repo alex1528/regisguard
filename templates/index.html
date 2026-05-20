@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RegisGuard - 域名管理面板</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <header>
+            <h1>RegisGuard 域名管理面板</h1>
+            <div class="header-actions">
+                <a href="/logout" class="btn btn-secondary">退出登录</a>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="settings">全局设置</button>
+            <button class="tab-btn" data-tab="domains">管理域名</button>
+            <button class="tab-btn" data-tab="dns">批量检测DNS记录</button>
+        </div>
+
+        <!-- Tab: 全局设置 -->
+        <div class="tab-content active" id="tab-settings">
+            <div class="card">
+                <div class="settings-row">
+                    <div class="setting-item">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="ssl-global-toggle" aria-label="启用 HTTPS/443">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <div class="setting-text">
+                            <strong>启用 HTTPS/443</strong>
+                            <p>开启后，已申请证书的域名将同时监听 443 端口并提供 HTTPS 访问，HTTP 请求自动 301 跳转到 HTTPS</p>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label for="allowed-ips">IP 白名单</label>
+                        <input type="text" id="allowed-ips" placeholder="192.168.1.100,10.0.0.50（留空表示不限制）">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="saveSettings()">保存设置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: 管理域名 -->
+        <div class="tab-content" id="tab-domains">
+            <div class="main-layout">
+                <div class="card">
+                    <h2>新增 / 编辑域名</h2>
+                    <form id="domain-form">
+                        <input type="hidden" id="edit-index" value="-1" aria-label="edit index">
+                        <div class="form-group">
+                            <label for="domain">完整域名 (如 www.example.com)</label>
+                            <input type="text" id="domain" name="domain" placeholder="www.example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="keyword">匹配关键字 (用于前端识别)</label>
+                            <input type="text" id="keyword" name="keyword" placeholder="example" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full">保存到列表</button>
+                        <button type="button" class="btn btn-secondary btn-full btn-hidden" id="cancel-edit">取消编辑</button>
+                        <button type="button" class="btn btn-success btn-full" onclick="applyConfig()">一键重载 Nginx</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>域名列表 ({{ domains|length }} 个)</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>完整域名</th>
+                                <th>匹配关键字</th>
+                                <th>色彩</th>
+                                <th>HTTPS</th>
+                                <th>证书</th>
+                                <th>到期时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="domain-table">
+                            {% for item in domains %}
+                            <tr data-index="{{ loop.index0 }}">
+                                <td><strong>{{ item.domain }}</strong></td>
+                                <td><code>{{ item.keyword }}</code></td>
+                                <td>
+                                    <span class="color-preview gradient-bg" data-gradient="{{ item.gradient }}"></span>
+                                </td>
+                                <td>
+                                    <label class="toggle-label toggle-sm" aria-label="HTTPS for {{ item.domain }}">
+                                        <input type="checkbox" class="https-toggle" data-index="{{ loop.index0 }}" data-domain="{{ item.domain }}" {% if item.https_enabled %}checked{% endif %}>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </td>
+                                <td>
+                                    {% if item.https_enabled %}
+                                    <span class="badge badge-success">已申请</span>
+                                    {% else %}
+                                    <span class="badge badge-warning">未申请</span>
+                                    {% endif %}
+                                </td>
+                                <td class="cert-expiry" data-domain="{{ item.domain }}">-</td>
+                                <td class="actions">
+                                    <button class="btn btn-sm btn-info" onclick="editDomain({{ loop.index0 }})">编辑</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteDomain({{ loop.index0 }})">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: 批量检测 DNS A 记录 -->
+        <div class="tab-content" id="tab-dns">
+            <div class="card">
+                <button class="btn btn-info" onclick="checkAllDNS()">开始检测</button>
+                <span id="last-check" class="timestamp"></span>
+            </div>
+            <div class="card" id="dns-section" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>域名</th>
+                            <th>A 记录值</th>
+                            <th>状态</th>
+                            <th>TTL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dns-results"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Console Log -->
+        <div class="console-log" id="console">系统就绪。修改完域名列表后，请点击"一键重载 Nginx"使配置生效。</div>
+    </div>
+
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>
