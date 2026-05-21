@@ -129,6 +129,10 @@ form.addEventListener('submit', function(e) {
         log(res.status === 'success'
             ? `✅ ${res.message}` : `❌ ${res.message}`);
         if (res.status === 'success') {
+            // Clear form after successful save
+            editIndexInput.value = -1;
+            form.reset();
+            cancelBtn.style.display = 'none';
             // Auto-apply config after saving domain
             log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
             api('/api/apply', { method: 'POST' }).then(applyRes => {
