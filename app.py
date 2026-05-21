@@ -319,6 +319,8 @@ def check_a_record(domain):
 
 RENEWAL_CHECK_INTERVAL = 86400  # 24 hours
 RENEWAL_DAYS_BEFORE_EXPIRY = 30  # renew if expiring within 30 days
+RENEWAL_URGENT_DAYS = 5  # must renew before cert fully expires (>5 days)
+RENEWAL_URGENT_INTERVAL = 3600  # 1 hour for urgent checks
 
 
 def parse_cert_expiry(expiry_str):
@@ -330,38 +332,66 @@ def parse_cert_expiry(expiry_str):
 
 
 def auto_renew_loop():
-    """Background thread that checks and renews expiring certificates daily."""
+    """Background thread that checks and renews expiring certificates.
+
+    Two-tier strategy:
+    - Normal: check every 24h, renew if expiring within 30 days
+    - Urgent: check every 1h, renew if expiring within 5 days
+      (ensures renewal completes before cert fully expires)
+    """
     time.sleep(60)  # wait for app to fully start
-    logger.info("Auto-renewal thread started (check interval: %ds, "
-                "renew threshold: %dd)",
-                RENEWAL_CHECK_INTERVAL, RENEWAL_DAYS_BEFORE_EXPIRY)
+    logger.info("Auto-renewal thread started (normal: %ds/%dd, "
+                "urgent: %ds/%dd)",
+                RENEWAL_CHECK_INTERVAL, RENEWAL_DAYS_BEFORE_EXPIRY,
+                RENEWAL_URGENT_INTERVAL, RENEWAL_URGENT_DAYS)
 
     while True:
         try:
             domains = get_all_domains()
+            now = datetime.utcnow()
 
             renewed = 0
+            urgent = False
             for item in domains:
                 if not item.get("https_enabled"):
                     continue
                 bare = item["domain"].replace("www.", "")
                 status = check_cert_status(bare)
-                if status["https_enabled"] and status.get("expiry"):
-                    expiry_dt = parse_cert_expiry(status["expiry"])
-                    if (expiry_dt
-                            and expiry_dt < datetime.utcnow()
-                            + timedelta(days=RENEWAL_DAYS_BEFORE_EXPIRY)):
-                        logger.info("Certificate for %s expiring soon (%s), "
-                                    "auto-renewing...",
-                                    item["domain"], status["expiry"])
-                        result = renew_certificate(item["domain"])
-                        if result["status"] == "success":
-                            renewed += 1
-                            logger.info("Auto-renewed certificate for %s",
-                                        item["domain"])
-                        else:
-                            logger.error("Auto-renewal failed for %s: %s",
-                                         item["domain"], result["message"])
+                if not status["https_enabled"] or not status.get("expiry"):
+                    continue
+                expiry_dt = parse_cert_expiry(status["expiry"])
+                if not expiry_dt:
+                    continue
+
+                days_left = (expiry_dt - now).total_seconds() / 86400
+
+                # Urgent tier: <5 days, must renew immediately
+                if days_left <= RENEWAL_URGENT_DAYS:
+                    urgent = True
+                    logger.warning("Certificate for %s critically expiring "
+                                   "(%s left), urgent renewal...",
+                                   item["domain"], status["expiry"])
+                    result = renew_certificate(item["domain"])
+                    if result["status"] == "success":
+                        renewed += 1
+                        logger.info("Urgent renewal succeeded for %s",
+                                    item["domain"])
+                    else:
+                        logger.error("Urgent renewal failed for %s: %s",
+                                     item["domain"], result["message"])
+                # Normal tier: <=30 days
+                elif days_left <= RENEWAL_DAYS_BEFORE_EXPIRY:
+                    logger.info("Certificate for %s expiring soon (%s), "
+                                "auto-renewing...",
+                                item["domain"], status["expiry"])
+                    result = renew_certificate(item["domain"])
+                    if result["status"] == "success":
+                        renewed += 1
+                        logger.info("Auto-renewed certificate for %s",
+                                    item["domain"])
+                    else:
+                        logger.error("Auto-renewal failed for %s: %s",
+                                     item["domain"], result["message"])
 
             if renewed > 0:
                 logger.info("Auto-renewal cycle complete: "
@@ -369,7 +399,10 @@ def auto_renew_loop():
         except Exception as e:
             logger.error("Auto-renewal thread error: %s", e)
 
-        time.sleep(RENEWAL_CHECK_INTERVAL)
+        # Use shorter interval when any cert is in urgent window
+        sleep_time = (RENEWAL_URGENT_INTERVAL if urgent
+                      else RENEWAL_CHECK_INTERVAL)
+        time.sleep(sleep_time)
 
 
 def start_auto_renew_thread():
