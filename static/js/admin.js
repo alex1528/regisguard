@@ -111,7 +111,12 @@ form.addEventListener('submit', function(e) {
     api(url, { method, body: JSON.stringify(data) }).then(res => {
         log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
         if (res.status === 'success') {
-            location.reload();
+            // Auto-apply config after saving domain
+            log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
+            api('/api/apply', { method: 'POST' }).then(applyRes => {
+                log(applyRes.status === 'success' ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
+                location.reload();
+            });
         }
     });
 });
@@ -142,15 +147,13 @@ function deleteDomain(index) {
     if (!confirm('确定删除该域名吗？')) return;
     api(`/api/domains/${index}`, { method: 'DELETE' }).then(res => {
         log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
-        if (res.status === 'success') location.reload();
-    });
-}
-
-// --- Apply Config ---
-function applyConfig() {
-    log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
-    api('/api/apply', { method: 'POST' }).then(res => {
-        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
+        if (res.status === 'success') {
+            log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
+            api('/api/apply', { method: 'POST' }).then(applyRes => {
+                log(applyRes.status === 'success' ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
+                location.reload();
+            });
+        }
     });
 }
 

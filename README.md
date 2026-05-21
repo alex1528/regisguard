@@ -134,7 +134,7 @@ systemctl start regisguard
 | `PUT` | `/api/domains/<index>` | 修改域名 |
 | `DELETE` | `/api/domains/<index>` | 删除域名 |
 | `PUT` | `/api/domains/<index>/https` | 切换单域名 HTTPS（开启时自动申请证书） |
-| `POST` | `/api/apply` | 同步配置并重载 Nginx |
+| `POST` | `/api/apply` | 同步配置并重载 Nginx（保存/删除域名时自动调用） |
 | `GET` | `/api/settings` | 获取全局设置 |
 | `PUT` | `/api/settings` | 更新全局设置 |
 | `POST` | `/api/ssl/issue` | 申请 SSL 证书（内部调用） |
@@ -164,7 +164,7 @@ systemctl start regisguard
 1. 管理面板中切换域名的 HTTPS 开关为开启
 2. 后端自动调用 Certbot 申请证书（webroot 模式），使用 `info@{bare_domain}` 作为注册邮箱
 3. 证书申请成功后标记 `https_enabled = true`
-4. 点击"一键重载 Nginx"使配置生效
+4. 保存域名后自动编译并重载 Nginx 使配置生效
 5. 后台线程每 24 小时检查证书过期时间，30 天内到期自动续期
 
 > **注意**：证书申请和续期均已完全自动化，无需手动操作。管理面板中不提供"申请证书"和"续期"按钮。
