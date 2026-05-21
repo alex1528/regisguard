@@ -676,4 +676,5 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(os.path.dirname(__file__), "logs"), exist_ok=True)
     init_db()
     start_auto_renew_thread()
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=5000)
