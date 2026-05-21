@@ -4,7 +4,7 @@ import subprocess
 import logging
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import dns.resolver
@@ -348,7 +348,7 @@ def auto_renew_loop():
     while True:
         try:
             domains = get_all_domains()
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             renewed = 0
             urgent = False
