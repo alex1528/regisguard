@@ -493,14 +493,17 @@ def toggle_domain_https(index):
         email = get_certbot_email_for_domain(domain)
         cert_result = issue_certificate(domain, WEB_ROOT, email)
         if cert_result["status"] != "success":
+            # Rollback: revert https_enabled to False
+            update_domain_https(item["id"], False)
             logger.warning(
-                "HTTPS enabled for %s but certificate issuance failed: %s",
+                "HTTPS enabled for %s but certificate issuance failed, "
+                "rolled back to HTTP: %s",
                 domain, cert_result.get("message", ""))
             return jsonify({
-                "status": "warning",
+                "status": "error",
                 "message": (
-                    f"HTTPS enabled for {domain}, but certificate issuance "
-                    f"failed: {cert_result.get('message', '')}"
+                    f"域名 {domain} 证书申请失败，已自动关闭 HTTPS 开关。"
+                    f"原因：{cert_result.get('message', '')}"
                 ),
                 "cert_result": cert_result,
             })

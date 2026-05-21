@@ -193,8 +193,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (res.status === 'success') {
                     log(`✅ ${res.message}`);
                     location.reload();
-                } else if (res.status === 'warning') {
-                    log(`⚠️ ${res.message}`);
+                } else if (res.status === 'error') {
+                    log(`❌ ${res.message}`);
+                    toggle.checked = !enabled;
                     location.reload();
                 } else {
                     log(`❌ ${res.message}`);
