@@ -324,9 +324,10 @@ RENEWAL_URGENT_INTERVAL = 3600  # 1 hour for urgent checks
 
 
 def parse_cert_expiry(expiry_str):
-    """Parse Certbot expiry string to datetime."""
+    """Parse Certbot expiry string to timezone-aware UTC datetime."""
     try:
-        return datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z")
+        dt = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z")
+        return dt.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
         return None
 
