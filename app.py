@@ -157,19 +157,16 @@ def generate_html(domains_data):
 def generate_nginx(domains_data, settings=None):
     """Generate Nginx config: each domain gets its own server block with its own certificate.
 
-    Settings control:
-      ssl_global_enabled   - when False, all domains serve HTTP only (port 80).
-                             When True, domains with https_enabled+cert get HTTPS (port 443).
-      force_https_redirect - when True and ssl_global_enabled is True, HTTP requests
-                             are 301-redirected to HTTPS (except ACME challenge).
+    Per-domain HTTPS is self-contained: when https_enabled is True and a
+    certificate file exists, the domain listens on both 80 and 443 with
+    HTTP→HTTPS 301 redirect.
 
     Every server block includes the ACME challenge location so Certbot webroot
     validation works regardless of SSL state.
     """
     if settings is None:
         settings = {}
-    ssl_global = settings.get("ssl_global_enabled", False)
-    force_https = settings.get("force_https_redirect", True)
+    force_https = True  # Always redirect HTTP→HTTPS when HTTPS is enabled
 
     blocks = []
 
@@ -182,7 +179,7 @@ def generate_nginx(domains_data, settings=None):
         has_https = item.get("https_enabled", False)
         cert_path = os.path.join(SSL_DIR, bare, "fullchain.pem")
         key_path = os.path.join(SSL_DIR, bare, "privkey.pem")
-        ssl_ready = ssl_global and has_https and os.path.exists(cert_path)
+        ssl_ready = has_https and os.path.exists(cert_path)
 
         acme_block = f"""
     # ACME challenge for Certbot
@@ -192,8 +189,7 @@ def generate_nginx(domains_data, settings=None):
 """
 
         if ssl_ready:
-            if force_https:
-                block = f"""server {{
+            block = f"""server {{
     listen 80;
     server_name {names_str};
 {acme_block}
@@ -203,26 +199,6 @@ def generate_nginx(domains_data, settings=None):
 }}
 
 server {{
-    listen 443 ssl;
-    server_name {names_str};
-
-    ssl_certificate {cert_path};
-    ssl_certificate_key {key_path};
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
-
-    root {WEB_ROOT};
-    index index.html;
-
-    location / {{
-        try_files $uri $uri/ /index.html;
-    }}
-}}
-"""
-            else:
-                block = f"""server {{
-    listen 80;
     listen 443 ssl;
     server_name {names_str};
 
@@ -342,11 +318,6 @@ def auto_renew_loop():
     while True:
         try:
             data = load_data()
-            settings = data.get("settings", {})
-            if not settings.get("ssl_global_enabled", False):
-                logger.debug("SSL globally disabled, skipping auto-renewal check")
-                time.sleep(RENEWAL_CHECK_INTERVAL)
-                continue
 
             renewed = 0
             for item in data.get("domains", []):
@@ -519,8 +490,8 @@ def get_settings():
     data = load_data()
     settings = data.get("settings", {})
     return jsonify({
-        "ssl_global_enabled": settings.get("ssl_global_enabled", False),
-        "force_https_redirect": settings.get("force_https_redirect", True),
+        "ssl_global_enabled": True,  # Always true; per-domain HTTPS is self-contained
+        "force_https_redirect": True,  # Always true when HTTPS is enabled
         "allowed_ips": settings.get("allowed_ips", ""),
     })
 
@@ -529,16 +500,10 @@ def get_settings():
 @login_required
 def update_settings():
     data = load_data()
-    if "ssl_global_enabled" in request.json:
-        data["settings"]["ssl_global_enabled"] = bool(request.json["ssl_global_enabled"])
-    if "force_https_redirect" in request.json:
-        data["settings"]["force_https_redirect"] = bool(request.json["force_https_redirect"])
     if "allowed_ips" in request.json:
         data["settings"]["allowed_ips"] = request.json["allowed_ips"].strip()
     save_data(data)
-    logger.info("Settings updated: ssl_global_enabled=%s, force_https_redirect=%s, allowed_ips=%s",
-                data["settings"].get("ssl_global_enabled"),
-                data["settings"].get("force_https_redirect"),
+    logger.info("Settings updated: allowed_ips=%s",
                 data["settings"].get("allowed_ips"))
     return jsonify({"status": "success", "message": "Settings updated"})
 

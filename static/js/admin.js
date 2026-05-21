@@ -154,23 +154,7 @@ function applyConfig() {
     });
 }
 
-// --- SSL ---
-function issueSSL(domain) {
-    log(`⏳ 正在为 ${domain} 申请 SSL 证书...`);
-    api('/api/ssl/issue', { method: 'POST', body: JSON.stringify({ domain }) }).then(res => {
-        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
-        if (res.status === 'success') loadCertStatus();
-    });
-}
-
-function renewSingleSSL(domain) {
-    log(`⏳ 正在续期 ${domain} 的证书...`);
-    api('/api/ssl/renew', { method: 'POST', body: JSON.stringify({ domain }) }).then(res => {
-        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
-        if (res.status === 'success') loadCertStatus();
-    });
-}
-
+// --- Certificate Status ---
 function loadCertStatus() {
     api('/api/ssl/status', { method: 'GET' }).then(data => {
         data.certificates.forEach(cert => {
@@ -255,15 +239,12 @@ function checkAllDNS() {
 // --- Settings ---
 function loadSettings() {
     api('/api/settings', { method: 'GET' }).then(data => {
-        document.getElementById('ssl-global-toggle').checked = data.ssl_global_enabled;
         document.getElementById('allowed-ips').value = data.allowed_ips || '';
     });
 }
 
 function saveSettings() {
     const payload = {
-        ssl_global_enabled: document.getElementById('ssl-global-toggle').checked,
-        force_https_redirect: document.getElementById('ssl-global-toggle').checked,
         allowed_ips: document.getElementById('allowed-ips').value.trim(),
     };
     api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) }).then(res => {
@@ -274,7 +255,6 @@ function saveSettings() {
 // Init
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
-    loadCertStatus();
 
     // Apply gradient CSS variables to color preview elements
     document.querySelectorAll('.color-preview.gradient-bg').forEach(function(el) {
@@ -282,9 +262,5 @@ document.addEventListener('DOMContentLoaded', function() {
         if (gradient) {
             el.style.setProperty('--item-gradient', gradient);
         }
-    });
-
-    document.getElementById('ssl-global-toggle').addEventListener('change', function() {
-        saveSettings();
     });
 });

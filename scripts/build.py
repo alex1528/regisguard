@@ -82,8 +82,7 @@ def generate_nginx(domains_data, settings=None):
     """
     if settings is None:
         settings = {}
-    ssl_global = settings.get("ssl_global_enabled", False)
-    force_https = settings.get("force_https_redirect", True)
+    force_https = True  # Always redirect HTTP→HTTPS when HTTPS is enabled
 
     blocks = []
 
@@ -96,7 +95,7 @@ def generate_nginx(domains_data, settings=None):
         has_ssl = item.get("https_enabled", False)
         cert_path = os.path.join(SSL_DIR, bare, "fullchain.pem")
         key_path = os.path.join(SSL_DIR, bare, "privkey.pem")
-        ssl_ready = ssl_global and has_ssl and os.path.exists(cert_path)
+        ssl_ready = has_ssl and os.path.exists(cert_path)
 
         acme_block = f"""
     # ACME challenge for Certbot
@@ -106,8 +105,7 @@ def generate_nginx(domains_data, settings=None):
 """
 
         if ssl_ready:
-            if force_https:
-                block = f"""server {{
+            block = f"""server {{
     listen 80;
     server_name {names_str};
 {acme_block}
@@ -117,26 +115,6 @@ def generate_nginx(domains_data, settings=None):
 }}
 
 server {{
-    listen 443 ssl;
-    server_name {names_str};
-
-    ssl_certificate {cert_path};
-    ssl_certificate_key {key_path};
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
-
-    root {WEB_ROOT};
-    index index.html;
-
-    location / {{
-        try_files $uri $uri/ /index.html;
-    }}
-}}
-"""
-            else:
-                block = f"""server {{
-    listen 80;
     listen 443 ssl;
     server_name {names_str};
 

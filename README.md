@@ -8,7 +8,7 @@
 - **自动页面生成** — 根据域名列表自动生成带品牌主题的建设中页面
 - **Nginx 配置自动生成** — 每个域名独立 server block，自动重载
 - **Certbot SSL 证书自动化** — 开启 HTTPS 自动申请证书，后台线程自动续期
-- **二级 HTTPS 控制** — 全局开关 + 单域名开关（开启即自动申请/续期证书）
+- **单域名 HTTPS 控制** — 每个域名独立控制 HTTPS，开启即自动申请/续期证书，HTTP 自动 301 跳转
 - **DNS A 记录批量检测** — 一键检测所有域名的 www 子域名解析状态
 - **IP 白名单 ACL** — 支持管理面板界面配置，登录前拦截
 - **零数据库依赖** — JSON 文件存储，轻量易迁移
@@ -104,7 +104,7 @@ systemctl start regisguard
     "web_root": "/var/www/construction_page",
     "nginx_conf": "/etc/nginx/conf.d/regisguard.conf",
     "ssl_dir": "/etc/letsencrypt/live",
-    "ssl_global_enabled": false,
+    "ssl_global_enabled": true,
     "force_https_redirect": true,
     "allowed_ips": ""
   }
@@ -119,8 +119,8 @@ systemctl start regisguard
 | `keyword` | string | 用于前端页面识别的匹配关键字 |
 | `gradient` | string | CSS 渐变值，用于建设中页面的品牌色 |
 | `https_enabled` | boolean | 单域名 HTTPS 开关，开启后自动申请证书 |
-| `ssl_global_enabled` | boolean | 全局 HTTPS 开关，关闭时所有域名仅监听 80 |
-| `force_https_redirect` | boolean | HTTP→HTTPS 301 跳转开关 |
+| `ssl_global_enabled` | boolean | 内部字段，始终为 `true` |
+| `force_https_redirect` | boolean | 内部字段，始终为 `true`，启用 HTTPS 自动 301 跳转 |
 | `allowed_ips` | string | IP 白名单列表，逗号分隔，留空表示不限制 |
 
 ## API 接口
@@ -142,16 +142,21 @@ systemctl start regisguard
 | `GET` | `/api/ssl/status` | 查询所有证书状态 |
 | `POST` | `/api/dns/check` | 批量检测域名 A 记录 |
 
-## HTTPS 自动化控制
+## 单域名 HTTPS 控制
 
-全局设置中仅保留一个"启用 HTTPS/443"开关，`force_https_redirect` 与该开关联动（始终等于 `ssl_global_enabled`），无需手动配置。
+每个域名的 HTTPS 完全独立控制，无需全局开关。开启域名的 HTTPS 开关后：
+
+1. 后端自动申请 Certbot 证书（webroot 模式）
+2. Nginx 同时监听 80 和 443 端口
+3. HTTP 请求自动 301 跳转到 HTTPS
+4. 后台线程每日检查证书过期时间，30 天内到期自动续期
 
 ```text
-ssl_global_enabled (全局开关，联动 force_https_redirect)
-├── false → 所有域名仅监听 80 端口，无跳转
-└── true  → 检查每个域名的 https_enabled
-            ├── false → 仅监听 80
-            └── true  → 同时监听 80 + 443，HTTP 自动 301 跳转 HTTPS
+域名 https_enabled
+├── false → 仅监听 80 端口
+└── true  → 检查证书文件是否存在
+            ├── 无证书 → 仅监听 80（证书申请中）
+            └── 有证书 → 监听 80 + 443，HTTP 自动 301 跳转 HTTPS
 ```
 
 ### 单域名 HTTPS 开启流程

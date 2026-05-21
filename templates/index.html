@@ -28,16 +28,6 @@
             <div class="card">
                 <div class="settings-row">
                     <div class="setting-item">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="ssl-global-toggle" aria-label="启用 HTTPS/443">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <div class="setting-text">
-                            <strong>启用 HTTPS/443</strong>
-                            <p>开启后，已申请证书的域名将同时监听 443 端口并提供 HTTPS 访问，HTTP 请求自动 301 跳转到 HTTPS</p>
-                        </div>
-                    </div>
-                    <div class="setting-item">
                         <label for="allowed-ips">IP 白名单</label>
                         <input type="text" id="allowed-ips" placeholder="192.168.1.100,10.0.0.50（留空表示不限制）">
                         <button type="button" class="btn btn-sm btn-primary" onclick="saveSettings()">保存设置</button>
