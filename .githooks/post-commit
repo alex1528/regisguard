@@ -1,0 +1,76 @@
+#!/bin/sh
+# =============================================================================
+# post-commit: 每次提交后自动创建递增的语义化版本 tag
+#
+# 激活方式（克隆后执行一次）:
+#   git config core.hooksPath .githooks
+#
+# 跳过自动 tag（单次）:
+#   SKIP_AUTO_TAG=1 git commit -m "..."
+# =============================================================================
+set -eu
+
+# 防止递归调用（git tag 本身不会触发 post-commit，此处作为额外保险）
+if [ "${SKIP_AUTO_TAG:-0}" = "1" ]; then
+    exit 0
+fi
+
+# 确保在 git 仓库内运行
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    exit 0
+fi
+
+# 若当前 commit 已有版本 tag，跳过（幂等保护）
+if git tag --points-at HEAD 2>/dev/null | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+    exit 0
+fi
+
+# 取最新的语义化版本 tag（按版本号排序，而非字典序）
+last_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname 2>/dev/null | head -1)"
+
+if [ -n "$last_tag" ]; then
+    base_version="${last_tag#v}"
+else
+    base_version="0.0.0"
+fi
+
+# 解析 major.minor.patch
+IFS='.' read -r major minor patch <<EOF
+$base_version
+EOF
+
+# patch 递增，进位到 minor / major
+patch=$((patch + 1))
+if [ "$patch" -ge 100 ]; then
+    patch=0
+    minor=$((minor + 1))
+fi
+if [ "$minor" -ge 100 ]; then
+    minor=0
+    major=$((major + 1))
+fi
+
+next_tag="v${major}.${minor}.${patch}"
+
+# dry-run 模式：仅打印下一个 tag，不实际创建
+if [ "${1:-}" = "--dry-run" ]; then
+    printf '%s\n' "$next_tag"
+    exit 0
+fi
+
+# 创建带注释的 tag，SKIP_AUTO_TAG=1 防止 git tag 钩子（如有）二次触发
+if SKIP_AUTO_TAG=1 git tag -a "$next_tag" -m "Auto tag $next_tag" 2>/dev/null; then
+    printf '[post-commit] auto tag: %s\n' "$next_tag"
+    # 推送当前分支 + tag 到远端（origin）
+    # push.followTags=true 已在 .git/config 中配置，push 分支时会自动携带可达 tag。
+    # 此处显式 push 分支+tag 作为即时推送，失败时仅警告，不阻断提交。
+    if git remote get-url origin >/dev/null 2>&1; then
+        current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+        push_ref="${current_branch:-HEAD}"
+        git push origin "$push_ref" "$next_tag" >/dev/null 2>&1 && \
+            printf '[post-commit] pushed %s + tag %s to origin\n' "$push_ref" "$next_tag" || \
+            printf '[post-commit] warn: push failed (auth/network?). run manually: git push origin %s --tags\n' "$push_ref"
+    fi
+else
+    printf '[post-commit] tag %s already exists, skipped\n' "$next_tag"
+fi
