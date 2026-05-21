@@ -8,15 +8,25 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 import dns.resolver
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+from flask import (
+    Flask, render_template, request, redirect,
+    url_for, jsonify, session, flash,
+)
 from flask_wtf.csrf import CSRFProtect
 
-from config import WEB_ROOT, NGINX_CONF_PATH, SSL_DIR, SECRET_KEY, ADMIN_PASSWORD, ADMIN_ALLOWED_IPS
+from config import (
+    WEB_ROOT, NGINX_CONF_PATH, SSL_DIR,
+    SECRET_KEY, ADMIN_PASSWORD, ADMIN_ALLOWED_IPS,
+)
 from db import (
     init_db, get_all_domains, add_domain, update_domain, delete_domain,
-    get_domain_by_index, update_domain_https, get_setting, set_setting, get_all_settings,
+    get_domain_by_index, update_domain_https,
+    get_setting, set_setting, get_all_settings,
 )
-from scripts.ssl_manager import issue_certificate, check_cert_status, renew_certificate, renew_all_certificates
+from scripts.ssl_manager import (
+    issue_certificate, check_cert_status,
+    renew_certificate, renew_all_certificates,
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
@@ -55,12 +65,16 @@ def ip_allowed(f):
     def decorated(*args, **kwargs):
         allowed_ips = get_allowed_ips()
         if allowed_ips:
-            allowed = [ip.strip() for ip in allowed_ips.split(",") if ip.strip()]
+            allowed = [ip.strip() for ip in allowed_ips.split(",")
+                       if ip.strip()]
             client_ip = get_client_ip()
             if client_ip not in allowed:
                 logger.warning("Blocked access from %s", client_ip)
-                if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                    return jsonify({"status": "error", "message": "IP not allowed"}), 403
+                if (request.is_json
+                        or request.headers.get("X-Requested-With")
+                        == "XMLHttpRequest"):
+                    return jsonify({"status": "error",
+                                    "message": "IP not allowed"}), 403
                 return render_template("403.html", message="您的 IP 不在白名单中"), 403
         return f(*args, **kwargs)
     return decorated
@@ -69,7 +83,7 @@ def ip_allowed(f):
 # --- Helpers ---
 
 def load_data():
-    """Return data in legacy JSON-compatible format for backward compatibility."""
+    """Return data in legacy JSON-compatible format."""
     domains = get_all_domains()
     settings = get_all_settings()
     return {"domains": domains, "settings": settings}
@@ -79,8 +93,11 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("logged_in"):
-            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return jsonify({"status": "error", "message": "Unauthorized"}), 401
+            if (request.is_json
+                    or request.headers.get("X-Requested-With")
+                    == "XMLHttpRequest"):
+                return jsonify({"status": "error",
+                                "message": "Unauthorized"}), 401
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
@@ -150,7 +167,7 @@ def generate_html(domains_data):
 
 
 def generate_nginx(domains_data, settings=None):
-    """Generate Nginx config: each domain gets its own server block with its own certificate.
+    """Generate Nginx config: each domain gets its own server block.
 
     Per-domain HTTPS is self-contained: when https_enabled is True and a
     certificate file exists, the domain listens on both 80 and 443 with
@@ -280,13 +297,17 @@ def check_a_record(domain):
             "ttl": answers.ttl,
         }
     except dns.resolver.NoAnswer:
-        return {"domain": query_domain, "status": "no_record", "a_records": [], "ttl": None}
+        return {"domain": query_domain, "status": "no_record",
+                "a_records": [], "ttl": None}
     except dns.resolver.NXDOMAIN:
-        return {"domain": query_domain, "status": "not_found", "a_records": [], "ttl": None}
+        return {"domain": query_domain, "status": "not_found",
+                "a_records": [], "ttl": None}
     except dns.resolver.Timeout:
-        return {"domain": query_domain, "status": "timeout", "a_records": [], "ttl": None}
+        return {"domain": query_domain, "status": "timeout",
+                "a_records": [], "ttl": None}
     except Exception as e:
-        return {"domain": query_domain, "status": "error", "a_records": [], "ttl": None, "error": str(e)}
+        return {"domain": query_domain, "status": "error",
+                "a_records": [], "ttl": None, "error": str(e)}
 
 
 # --- Auto SSL Renewal Background Thread ---
@@ -296,7 +317,7 @@ RENEWAL_DAYS_BEFORE_EXPIRY = 30  # renew if expiring within 30 days
 
 
 def parse_cert_expiry(expiry_str):
-    """Parse Certbot expiry string like 'Jun 15 12:00:00 2025 GMT' to datetime."""
+    """Parse Certbot expiry string to datetime."""
     try:
         return datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z")
     except (ValueError, TypeError):
@@ -306,7 +327,8 @@ def parse_cert_expiry(expiry_str):
 def auto_renew_loop():
     """Background thread that checks and renews expiring certificates daily."""
     time.sleep(60)  # wait for app to fully start
-    logger.info("Auto-renewal thread started (check interval: %ds, renew threshold: %dd)",
+    logger.info("Auto-renewal thread started (check interval: %ds, "
+                "renew threshold: %dd)",
                 RENEWAL_CHECK_INTERVAL, RENEWAL_DAYS_BEFORE_EXPIRY)
 
     while True:
@@ -321,18 +343,24 @@ def auto_renew_loop():
                 status = check_cert_status(bare)
                 if status["https_enabled"] and status.get("expiry"):
                     expiry_dt = parse_cert_expiry(status["expiry"])
-                    if expiry_dt and expiry_dt < datetime.utcnow() + timedelta(days=RENEWAL_DAYS_BEFORE_EXPIRY):
-                        logger.info("Certificate for %s expiring soon (%s), auto-renewing...",
+                    if (expiry_dt
+                            and expiry_dt < datetime.utcnow()
+                            + timedelta(days=RENEWAL_DAYS_BEFORE_EXPIRY)):
+                        logger.info("Certificate for %s expiring soon (%s), "
+                                    "auto-renewing...",
                                     item["domain"], status["expiry"])
                         result = renew_certificate(item["domain"])
                         if result["status"] == "success":
                             renewed += 1
-                            logger.info("Auto-renewed certificate for %s", item["domain"])
+                            logger.info("Auto-renewed certificate for %s",
+                                        item["domain"])
                         else:
-                            logger.error("Auto-renewal failed for %s: %s", item["domain"], result["message"])
+                            logger.error("Auto-renewal failed for %s: %s",
+                                         item["domain"], result["message"])
 
             if renewed > 0:
-                logger.info("Auto-renewal cycle complete: %d certificates renewed", renewed)
+                logger.info("Auto-renewal cycle complete: "
+                            "%d certificates renewed", renewed)
         except Exception as e:
             logger.error("Auto-renewal thread error: %s", e)
 
@@ -341,7 +369,8 @@ def auto_renew_loop():
 
 def start_auto_renew_thread():
     """Start the background auto-renewal thread as a daemon."""
-    t = threading.Thread(target=auto_renew_loop, daemon=True, name="ssl-auto-renew")
+    t = threading.Thread(target=auto_renew_loop, daemon=True,
+                         name="ssl-auto-renew")
     t.start()
     logger.info("Auto-renewal background thread launched")
 
@@ -395,12 +424,14 @@ def add_domain_route():
     gradient = request.json.get("gradient", "")
 
     if not domain or not keyword:
-        return jsonify({"status": "error", "message": "Domain and keyword are required"}), 400
+        return jsonify({"status": "error",
+                        "message": "Domain and keyword are required"}), 400
 
     success, message = add_domain(domain, keyword, gradient)
     if success:
         logger.info("Domain added: %s", domain)
-    return jsonify({"status": "success" if success else "error", "message": message})
+    return jsonify({"status": "success" if success else "error",
+                    "message": message})
 
 
 @app.route("/api/domains/<int:index>", methods=["PUT"])
@@ -415,12 +446,14 @@ def update_domain_route(index):
     gradient = request.json.get("gradient", "")
 
     if not domain or not keyword:
-        return jsonify({"status": "error", "message": "Domain and keyword are required"}), 400
+        return jsonify({"status": "error",
+                        "message": "Domain and keyword are required"}), 400
 
     success, message = update_domain(item["id"], domain, keyword, gradient)
     if success:
         logger.info("Domain updated: %s", domain)
-    return jsonify({"status": "success" if success else "error", "message": message})
+    return jsonify({"status": "success" if success else "error",
+                    "message": message})
 
 
 @app.route("/api/domains/<int:index>", methods=["DELETE"])
@@ -433,7 +466,8 @@ def delete_domain_route(index):
     success, message, _ = delete_domain(item["id"])
     if success:
         logger.info("Domain deleted: %s", item["domain"])
-    return jsonify({"status": "success" if success else "error", "message": message})
+    return jsonify({"status": "success" if success else "error",
+                    "message": message})
 
 
 # --- Per-Domain HTTPS Toggle ---
@@ -441,7 +475,9 @@ def delete_domain_route(index):
 @app.route("/api/domains/<int:index>/https", methods=["PUT"])
 @login_required
 def toggle_domain_https(index):
-    """Toggle per-domain HTTPS. When enabling, auto-triggers certificate issuance."""
+    """Toggle per-domain HTTPS. When enabling, auto-triggers certificate
+    issuance. If DNS is not ready, returns a warning but keeps HTTPS enabled.
+    """
     item = get_domain_by_index(index)
     if not item:
         return jsonify({"status": "error", "message": "Domain not found"}), 404
@@ -457,11 +493,15 @@ def toggle_domain_https(index):
         email = get_certbot_email_for_domain(domain)
         cert_result = issue_certificate(domain, WEB_ROOT, email)
         if cert_result["status"] != "success":
-            logger.warning("HTTPS enabled for %s but certificate issuance failed: %s",
-                           domain, cert_result.get("message", ""))
+            logger.warning(
+                "HTTPS enabled for %s but certificate issuance failed: %s",
+                domain, cert_result.get("message", ""))
             return jsonify({
                 "status": "warning",
-                "message": f"HTTPS enabled for {domain}, but certificate issuance failed: {cert_result.get('message', '')}",
+                "message": (
+                    f"HTTPS enabled for {domain}, but certificate issuance "
+                    f"failed: {cert_result.get('message', '')}"
+                ),
                 "cert_result": cert_result,
             })
         logger.info("Auto-issued certificate for %s (HTTPS enabled)", domain)
@@ -476,7 +516,8 @@ def toggle_domain_https(index):
 @login_required
 def apply():
     success, message = apply_config()
-    return jsonify({"status": "success" if success else "error", "message": message})
+    return jsonify({"status": "success" if success else "error",
+                    "message": message})
 
 
 # --- Settings ---
@@ -496,7 +537,8 @@ def get_settings():
 def update_settings():
     if "allowed_ips" in request.json:
         set_setting("allowed_ips", request.json["allowed_ips"].strip())
-        logger.info("Settings updated: allowed_ips=%s", request.json["allowed_ips"].strip())
+        logger.info("Settings updated: allowed_ips=%s",
+                    request.json["allowed_ips"].strip())
     return jsonify({"status": "success", "message": "Settings updated"})
 
 
@@ -521,7 +563,8 @@ def change_password():
 def issue_ssl():
     domain = request.json.get("domain", "")
     if not domain:
-        return jsonify({"status": "error", "message": "Domain is required"}), 400
+        return jsonify({"status": "error",
+                        "message": "Domain is required"}), 400
 
     email = get_certbot_email_for_domain(domain)
     result = issue_certificate(domain, WEB_ROOT, email)
