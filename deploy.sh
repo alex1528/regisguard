@@ -12,7 +12,7 @@ echo "=== RegisGuard Deployment ==="
 
 # 1. Install dependencies
 echo "[1/6] Installing system dependencies..."
-apt update && apt install -y nginx python3-pip python3-venv certbot python3-certbot-nginx
+apt update && apt install -y nginx python3-pip python3-venv certbot python3-certbot-nginx openssl
 
 # 2. Create install directory
 echo "[2/6] Setting up install directory..."

@@ -19,7 +19,7 @@
 
 | 组件 | 技术 | 说明 |
 | --- | --- | --- |
-| 后端 | Python Flask | 轻量级 Web 框架 |
+| 后端 | Python Flask + Waitress | 轻量级 Web 框架 + 生产级 WSGI 服务器 |
 | 数据存储 | SQLite 数据库 | WAL 模式，自动从 JSON 迁移 |
 | Web 服务器 | Nginx | 静态资源服务 + 反向代理 |
 | SSL 证书 | Certbot | Let's Encrypt 自动申请/续期 |
@@ -67,7 +67,7 @@ bash deploy.sh "192.168.1.100,10.0.0.50"
 ```bash
 # 1. 安装依赖
 apt update && apt install -y nginx python3-pip certbot python3-certbot-nginx
-pip3 install flask flask-wtf dnspython
+pip3 install flask flask-wtf dnspython waitress
 
 # 2. 部署应用
 mkdir -p /opt/regisguard
