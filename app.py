@@ -508,6 +508,11 @@ def toggle_domain_https(index):
                 "cert_result": cert_result,
             })
         logger.info("Auto-issued certificate for %s (HTTPS enabled)", domain)
+        # Regenerate Nginx config with 443 SSL block and reload
+        apply_success, apply_msg = apply_config()
+        if not apply_success:
+            logger.error("Failed to reload Nginx after cert issue: %s",
+                         apply_msg)
 
     logger.info("Domain %s https_enabled=%s", domain, enable)
     return jsonify({"status": "success", "message": message})
