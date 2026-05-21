@@ -1,4 +1,5 @@
-const CSRF_TOKEN = document.querySelector('input[name="csrf_token"]')?.value || '';
+const CSRF_TOKEN = document
+    .querySelector('input[name="csrf_token"]')?.value || '';
 
 function log(msg) {
     const el = document.getElementById('console');
@@ -18,15 +19,28 @@ async function api(url, options) {
 }
 
 // --- Tabs ---
+function activateTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.tab === tabName);
+    });
+    document.querySelectorAll('.tab-content').forEach(function(c) {
+        c.classList.toggle('active', c.id === 'tab-' + tabName);
+    });
+    window.location.hash = tabName;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.tab-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-            this.classList.add('active');
-            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            activateTab(this.dataset.tab);
         });
     });
+
+    // Restore active tab from URL hash on page load
+    var hash = window.location.hash.replace('#', '');
+    if (hash && document.getElementById('tab-' + hash)) {
+        activateTab(hash);
+    }
 });
 
 // --- Domain Form ---
@@ -102,7 +116,9 @@ form.addEventListener('submit', function(e) {
         domain: document.getElementById('domain').value,
         keyword: document.getElementById('keyword').value,
         gradient: idx >= 0
-            ? document.querySelector(`tr[data-index="${idx}"] .color-preview`)?.dataset.gradient || randomGradient()
+            ? document.querySelector(
+                `tr[data-index="${idx}"] .color-preview`
+              )?.dataset.gradient || randomGradient()
             : randomGradient(),
     };
 
@@ -110,12 +126,14 @@ form.addEventListener('submit', function(e) {
     const url = idx >= 0 ? `/api/domains/${idx}` : '/api/domains';
 
     api(url, { method, body: JSON.stringify(data) }).then(res => {
-        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
+        log(res.status === 'success'
+            ? `✅ ${res.message}` : `❌ ${res.message}`);
         if (res.status === 'success') {
             // Auto-apply config after saving domain
             log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
             api('/api/apply', { method: 'POST' }).then(applyRes => {
-                log(applyRes.status === 'success' ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
+                log(applyRes.status === 'success'
+                    ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
                 location.reload();
             });
         }
@@ -137,21 +155,20 @@ function editDomain(index) {
     editIndexInput.value = index;
     cancelBtn.style.display = 'block';
     // Switch to domains tab
-    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
-    document.querySelector('.tab-btn[data-tab="domains"]').classList.add('active');
-    document.getElementById('tab-domains').classList.add('active');
+    activateTab('domains');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function deleteDomain(index) {
     if (!confirm('确定删除该域名吗？')) return;
     api(`/api/domains/${index}`, { method: 'DELETE' }).then(res => {
-        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
+        log(res.status === 'success'
+            ? `✅ ${res.message}` : `❌ ${res.message}`);
         if (res.status === 'success') {
             log('⏳ 正在编译并重载 Nginx，请勿刷新网页...');
             api('/api/apply', { method: 'POST' }).then(applyRes => {
-                log(applyRes.status === 'success' ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
+                log(applyRes.status === 'success'
+                    ? `✅ ${applyRes.message}` : `❌ ${applyRes.message}`);
                 location.reload();
             });
         }
@@ -162,7 +179,8 @@ function deleteDomain(index) {
 function loadCertStatus() {
     api('/api/ssl/status', { method: 'GET' }).then(data => {
         data.certificates.forEach(cert => {
-            const cell = document.querySelector(`.cert-expiry[data-domain="${cert.domain}"]`);
+            const cell = document.querySelector(
+                `.cert-expiry[data-domain="${cert.domain}"]`);
             if (cell) {
                 if (cert.https_enabled && cert.expiry) {
                     cell.textContent = cert.expiry;
@@ -225,8 +243,10 @@ function checkAllDNS() {
         tbody.innerHTML = '';
         data.results.forEach(r => {
             const tr = document.createElement('tr');
-            const records = r.a_records.length > 0 ? r.a_records.join(', ') : '-';
-            const ttl = r.ttl !== null && r.ttl !== undefined ? `${r.ttl}s` : '-';
+            const records = r.a_records.length > 0
+                ? r.a_records.join(', ') : '-';
+            const ttl = r.ttl !== null && r.ttl !== undefined
+                ? `${r.ttl}s` : '-';
             const statusText = STATUS_MAP[r.status] || r.status;
             tr.innerHTML = `
                 <td><strong>${r.domain}</strong></td>
@@ -236,7 +256,8 @@ function checkAllDNS() {
             `;
             tbody.appendChild(tr);
         });
-        document.getElementById('last-check').textContent = `上次检测: ${new Date(data.timestamp).toLocaleString()}`;
+        document.getElementById('last-check').textContent = (
+            `上次检测: ${new Date(data.timestamp).toLocaleString()}`);
         log(`✅ DNS 检测完成，共检测 ${data.total} 个域名`);
     });
 }
@@ -252,7 +273,9 @@ function saveSettings() {
     const payload = {
         allowed_ips: document.getElementById('allowed-ips').value.trim(),
     };
-    api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) }).then(res => {
+    api('/api/settings', {
+        method: 'PUT', body: JSON.stringify(payload),
+    }).then(res => {
         log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
     });
 }
@@ -263,7 +286,9 @@ function changePassword() {
         log('❌ 请输入新密码');
         return;
     }
-    api('/api/password', { method: 'PUT', body: JSON.stringify({ password: newPassword }) }).then(res => {
+    api('/api/password', {
+        method: 'PUT', body: JSON.stringify({ password: newPassword }),
+    }).then(res => {
         log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
         if (res.status === 'success') {
             document.getElementById('admin-password').value = '';
@@ -276,7 +301,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
 
     // Apply gradient CSS variables to color preview elements
-    document.querySelectorAll('.color-preview.gradient-bg').forEach(function(el) {
+    document.querySelectorAll('.color-preview.gradient-bg')
+        .forEach(function(el) {
         const gradient = el.dataset.gradient;
         if (gradient) {
             el.style.setProperty('--item-gradient', gradient);
