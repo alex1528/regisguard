@@ -17,12 +17,13 @@ apt update && apt install -y nginx python3-pip python3-venv certbot python3-cert
 # 2. Create install directory
 echo "[2/6] Setting up install directory..."
 mkdir -p "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/data"
 mkdir -p "$INSTALL_DIR/logs"
 mkdir -p /var/www/construction_page
 
 # 3. Copy files
 echo "[3/6] Copying application files..."
-cp -r app.py config.py domains.json requirements.txt "$INSTALL_DIR/"
+cp -r app.py config.py db.py domains.json requirements.txt "$INSTALL_DIR/"
 cp -r templates static scripts "$INSTALL_DIR/"
 cp regisguard.service /etc/systemd/system/regisguard.service
 
@@ -33,21 +34,18 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 5. Configure IP whitelist in domains.json
-echo "[5/6] Configuring IP whitelist..."
+# 5. Initialize database and configure settings
+echo "[5/6] Initializing database..."
+source venv/bin/activate
 python3 -c "
-import json
-with open('domains.json', 'r') as f:
-    data = json.load(f)
-data['settings']['allowed_ips'] = '$ALLOWED_IPS'
-with open('domains.json', 'w') as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+from db import init_db, set_setting
+init_db()
+if '$ALLOWED_IPS':
+    set_setting('allowed_ips', '$ALLOWED_IPS')
+    print('  Allowed IPs: $ALLOWED_IPS')
+else:
+    print('  No IP whitelist configured (all IPs allowed)')
 "
-if [ -n "$ALLOWED_IPS" ]; then
-    echo "  Allowed IPs: $ALLOWED_IPS"
-else
-    echo "  No IP whitelist configured (all IPs allowed)"
-fi
 
 # 6. Enable and start service
 echo "[6/6] Enabling systemd service..."
@@ -58,7 +56,7 @@ systemctl start regisguard
 echo ""
 echo "=== Deployment Complete ==="
 echo "Admin panel: http://<server-ip>:5000"
-echo "Default password: admin123 (change via REGISGUARD_ADMIN_PASSWORD env var)"
+echo "Default password: admin123 (change via panel or REGISGUARD_ADMIN_PASSWORD env var)"
 if [ -n "$ALLOWED_IPS" ]; then
     echo "IP whitelist: $ALLOWED_IPS"
 fi
