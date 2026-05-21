@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline build script: reads domains.json, generates index.html and Nginx config."""
+"""Offline build script: reads from SQLite database, generates index.html and Nginx config."""
 
 import json
 import os
@@ -9,7 +9,8 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(BASE_DIR))
 
-from config import WEB_ROOT, NGINX_CONF_PATH, JSON_PATH, SSL_DIR
+from config import WEB_ROOT, NGINX_CONF_PATH, JSON_PATH, SSL_DIR, DB_PATH
+from db import init_db, get_all_domains
 
 
 def generate_html(domains_data):

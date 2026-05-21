@@ -11,9 +11,10 @@ import dns.resolver
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
 from flask_wtf.csrf import CSRFProtect
 
-from config import (
-    JSON_PATH, WEB_ROOT, NGINX_CONF_PATH, SSL_DIR,
-    SECRET_KEY, ADMIN_PASSWORD, ADMIN_ALLOWED_IPS,
+from config import WEB_ROOT, NGINX_CONF_PATH, SSL_DIR, SECRET_KEY, ADMIN_PASSWORD, ADMIN_ALLOWED_IPS
+from db import (
+    init_db, get_all_domains, add_domain, update_domain, delete_domain,
+    get_domain_by_index, update_domain_https, get_setting, set_setting, get_all_settings,
 )
 from scripts.ssl_manager import issue_certificate, check_cert_status, renew_certificate, renew_all_certificates
 
@@ -42,10 +43,9 @@ def get_client_ip():
 
 def get_allowed_ips():
     """Get IP whitelist from settings, fallback to env var."""
-    data = load_data()
-    settings_ips = data.get("settings", {}).get("allowed_ips", "")
-    if settings_ips:
-        return settings_ips
+    allowed_ips = get_setting("allowed_ips", "")
+    if allowed_ips:
+        return allowed_ips
     return ADMIN_ALLOWED_IPS
 
 
@@ -69,15 +69,10 @@ def ip_allowed(f):
 # --- Helpers ---
 
 def load_data():
-    if not os.path.exists(JSON_PATH):
-        return {"domains": [], "settings": {}}
-    with open(JSON_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def save_data(data):
-    with open(JSON_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """Return data in legacy JSON-compatible format for backward compatibility."""
+    domains = get_all_domains()
+    settings = get_all_settings()
+    return {"domains": domains, "settings": settings}
 
 
 def login_required(f):
@@ -242,8 +237,7 @@ def get_certbot_email_for_domain(domain):
 
 def apply_config():
     """Generate HTML and Nginx config, then reload Nginx."""
-    data = load_data()
-    domains = data.get("domains", [])
+    domains = get_all_domains()
     if not domains:
         return False, "No domains configured"
 
@@ -255,7 +249,7 @@ def apply_config():
     logger.info("Static page generated: %s/index.html", WEB_ROOT)
 
     # Generate and write Nginx config
-    settings = data.get("settings", {})
+    settings = get_all_settings()
     nginx_conf = generate_nginx(domains, settings)
     conf_dir = os.path.dirname(NGINX_CONF_PATH)
     os.makedirs(conf_dir, exist_ok=True)
@@ -317,10 +311,10 @@ def auto_renew_loop():
 
     while True:
         try:
-            data = load_data()
+            domains = get_all_domains()
 
             renewed = 0
-            for item in data.get("domains", []):
+            for item in domains:
                 if not item.get("https_enabled"):
                     continue
                 bare = item["domain"].replace("www.", "")
@@ -356,8 +350,7 @@ def start_auto_renew_thread():
 
 def get_admin_password():
     """Get admin password from settings, fallback to env var."""
-    data = load_data()
-    stored = data.get("settings", {}).get("admin_password", "")
+    stored = get_setting("admin_password", "")
     if stored:
         return stored
     return ADMIN_PASSWORD
@@ -387,15 +380,16 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    data = load_data()
-    return render_template("index.html", domains=data.get("domains", []), settings=data.get("settings", {}))
+    domains = get_all_domains()
+    settings = get_all_settings()
+    return render_template("index.html", domains=domains, settings=settings)
 
 
 # --- Domain CRUD ---
 
 @app.route("/api/domains", methods=["POST"])
 @login_required
-def add_domain():
+def add_domain_route():
     domain = request.json.get("domain", "").strip().lower()
     keyword = request.json.get("keyword", "").strip().lower()
     gradient = request.json.get("gradient", "")
@@ -403,20 +397,17 @@ def add_domain():
     if not domain or not keyword:
         return jsonify({"status": "error", "message": "Domain and keyword are required"}), 400
 
-    data = load_data()
-    data["domains"] = [d for d in data["domains"] if d["domain"] != domain]
-    data["domains"].append({"domain": domain, "keyword": keyword, "gradient": gradient, "https_enabled": False})
-    save_data(data)
-    logger.info("Domain added: %s", domain)
-    return jsonify({"status": "success", "message": f"Domain {domain} added"})
+    success, message = add_domain(domain, keyword, gradient)
+    if success:
+        logger.info("Domain added: %s", domain)
+    return jsonify({"status": "success" if success else "error", "message": message})
 
 
 @app.route("/api/domains/<int:index>", methods=["PUT"])
 @login_required
-def update_domain(index):
-    data = load_data()
-    domains = data.get("domains", [])
-    if index < 0 or index >= len(domains):
+def update_domain_route(index):
+    item = get_domain_by_index(index)
+    if not item:
         return jsonify({"status": "error", "message": "Domain not found"}), 404
 
     domain = request.json.get("domain", "").strip().lower()
@@ -426,24 +417,23 @@ def update_domain(index):
     if not domain or not keyword:
         return jsonify({"status": "error", "message": "Domain and keyword are required"}), 400
 
-    domains[index] = {"domain": domain, "keyword": keyword, "gradient": gradient, "https_enabled": domains[index].get("https_enabled", False)}
-    save_data(data)
-    logger.info("Domain updated: %s", domain)
-    return jsonify({"status": "success", "message": f"Domain {domain} updated"})
+    success, message = update_domain(item["id"], domain, keyword, gradient)
+    if success:
+        logger.info("Domain updated: %s", domain)
+    return jsonify({"status": "success" if success else "error", "message": message})
 
 
 @app.route("/api/domains/<int:index>", methods=["DELETE"])
 @login_required
-def delete_domain(index):
-    data = load_data()
-    domains = data.get("domains", [])
-    if index < 0 or index >= len(domains):
+def delete_domain_route(index):
+    item = get_domain_by_index(index)
+    if not item:
         return jsonify({"status": "error", "message": "Domain not found"}), 404
 
-    removed = domains.pop(index)
-    save_data(data)
-    logger.info("Domain deleted: %s", removed["domain"])
-    return jsonify({"status": "success", "message": f"Domain {removed['domain']} deleted"})
+    success, message, _ = delete_domain(item["id"])
+    if success:
+        logger.info("Domain deleted: %s", item["domain"])
+    return jsonify({"status": "success" if success else "error", "message": message})
 
 
 # --- Per-Domain HTTPS Toggle ---
@@ -452,22 +442,21 @@ def delete_domain(index):
 @login_required
 def toggle_domain_https(index):
     """Toggle per-domain HTTPS. When enabling, auto-triggers certificate issuance."""
-    data = load_data()
-    domains = data.get("domains", [])
-    if index < 0 or index >= len(domains):
+    item = get_domain_by_index(index)
+    if not item:
         return jsonify({"status": "error", "message": "Domain not found"}), 404
 
     enable = request.json.get("https_enabled", False)
-    domain = domains[index]["domain"]
-    domains[index]["https_enabled"] = bool(enable)
+    domain = item["domain"]
+
+    success, message, domain_name = update_domain_https(item["id"], enable)
+    if not success:
+        return jsonify({"status": "error", "message": message}), 404
 
     if enable:
-        # Auto-trigger certificate issuance
         email = get_certbot_email_for_domain(domain)
         cert_result = issue_certificate(domain, WEB_ROOT, email)
         if cert_result["status"] != "success":
-            # Still save the https_enabled flag but warn about cert failure
-            save_data(data)
             logger.warning("HTTPS enabled for %s but certificate issuance failed: %s",
                            domain, cert_result.get("message", ""))
             return jsonify({
@@ -477,9 +466,8 @@ def toggle_domain_https(index):
             })
         logger.info("Auto-issued certificate for %s (HTTPS enabled)", domain)
 
-    save_data(data)
     logger.info("Domain %s https_enabled=%s", domain, enable)
-    return jsonify({"status": "success", "message": f"HTTPS {'enabled' if enable else 'disabled'} for {domain}"})
+    return jsonify({"status": "success", "message": message})
 
 
 # --- Apply Config ---
@@ -496,24 +484,19 @@ def apply():
 @app.route("/api/settings", methods=["GET"])
 @login_required
 def get_settings():
-    data = load_data()
-    settings = data.get("settings", {})
     return jsonify({
-        "ssl_global_enabled": True,  # Always true; per-domain HTTPS is self-contained
-        "force_https_redirect": True,  # Always true when HTTPS is enabled
-        "allowed_ips": settings.get("allowed_ips", ""),
+        "ssl_global_enabled": True,
+        "force_https_redirect": True,
+        "allowed_ips": get_setting("allowed_ips", ""),
     })
 
 
 @app.route("/api/settings", methods=["PUT"])
 @login_required
 def update_settings():
-    data = load_data()
     if "allowed_ips" in request.json:
-        data["settings"]["allowed_ips"] = request.json["allowed_ips"].strip()
-    save_data(data)
-    logger.info("Settings updated: allowed_ips=%s",
-                data["settings"].get("allowed_ips"))
+        set_setting("allowed_ips", request.json["allowed_ips"].strip())
+        logger.info("Settings updated: allowed_ips=%s", request.json["allowed_ips"].strip())
     return jsonify({"status": "success", "message": "Settings updated"})
 
 
@@ -526,9 +509,7 @@ def change_password():
     if not new_password:
         return jsonify({"status": "error", "message": "密码不能为空"}), 400
 
-    data = load_data()
-    data["settings"]["admin_password"] = new_password
-    save_data(data)
+    set_setting("admin_password", new_password)
     logger.info("Admin password changed")
     return jsonify({"status": "success", "message": "密码修改成功"})
 
@@ -542,17 +523,15 @@ def issue_ssl():
     if not domain:
         return jsonify({"status": "error", "message": "Domain is required"}), 400
 
-    data = load_data()
     email = get_certbot_email_for_domain(domain)
     result = issue_certificate(domain, WEB_ROOT, email)
 
     if result["status"] == "success":
-        # Mark domain as HTTPS enabled
-        for d in data["domains"]:
+        domains = get_all_domains()
+        for d in domains:
             if d["domain"] == domain:
-                d["https_enabled"] = True
+                update_domain_https(d["id"], True)
                 break
-        save_data(data)
 
     return jsonify(result)
 
@@ -560,23 +539,21 @@ def issue_ssl():
 @app.route("/api/ssl/renew", methods=["POST"])
 @login_required
 def renew_ssl():
-    data = load_data()
     domain = request.json.get("domain", "")
     if domain:
-        # Renew single domain
         result = renew_certificate(domain)
     else:
-        # Renew all SSL-enabled domains
-        result = renew_all_certificates(data.get("domains", []))
+        domains = get_all_domains()
+        result = renew_all_certificates(domains)
     return jsonify(result)
 
 
 @app.route("/api/ssl/status", methods=["GET"])
 @login_required
 def ssl_status():
-    data = load_data()
+    domains = get_all_domains()
     results = []
-    for item in data.get("domains", []):
+    for item in domains:
         bare = item["domain"].replace("www.", "")
         status = check_cert_status(bare)
         status["https_enabled"] = item.get("https_enabled", False)
@@ -589,9 +566,9 @@ def ssl_status():
 @app.route("/api/dns/check", methods=["POST"])
 @login_required
 def batch_dns_check():
-    data = load_data()
+    domains = get_all_domains()
     results = []
-    for item in data.get("domains", []):
+    for item in domains:
         result = check_a_record(item["domain"])
         result["gradient"] = item.get("gradient", "")
         result["https_enabled"] = item.get("https_enabled", False)
@@ -607,5 +584,6 @@ def batch_dns_check():
 
 if __name__ == "__main__":
     os.makedirs(os.path.join(os.path.dirname(__file__), "logs"), exist_ok=True)
+    init_db()
     start_auto_renew_thread()
     app.run(host="0.0.0.0", port=5000, debug=False)

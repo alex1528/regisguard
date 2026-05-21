@@ -12,7 +12,7 @@
 - **DNS A 记录批量检测** — 一键检测所有域名的 www 子域名解析状态
 - **IP 白名单 ACL** — 支持管理面板界面配置，登录前拦截
 - **管理员密码修改** — 支持管理面板界面修改密码，即时生效
-- **零数据库依赖** — JSON 文件存储，轻量易迁移
+- **零数据库依赖** — SQLite 数据库存储，WAL 模式支持并发，首次启动自动从 JSON 迁移
 - **systemd 自启动** — 服务开机自启，后台自动续期证书
 
 ## 技术栈
@@ -20,7 +20,7 @@
 | 组件 | 技术 | 说明 |
 | --- | --- | --- |
 | 后端 | Python Flask | 轻量级 Web 框架 |
-| 数据存储 | JSON 文件 | 零配置，易备份 |
+| 数据存储 | SQLite 数据库 | WAL 模式，自动从 JSON 迁移 |
 | Web 服务器 | Nginx | 静态资源服务 + 反向代理 |
 | SSL 证书 | Certbot | Let's Encrypt 自动申请/续期 |
 | DNS 检测 | dnspython | 批量 A 记录查询 |
@@ -32,7 +32,8 @@
 /opt/regisguard/
 ├── app.py                 # Flask 主应用（路由、CRUD、后台线程）
 ├── config.py              # 路径常量、密钥、IP 白名单环境变量回退
-├── domains.json           # 域名配置数据 + 全局设置
+├── db.py                  # SQLite 数据库层（CRUD、设置管理、JSON 迁移）
+├── domains.json           # 初始数据源（首次启动后自动迁移至 SQLite）
 ├── requirements.txt       # Python 依赖
 ├── regisguard.service     # systemd 服务单元文件
 ├── deploy.sh              # 一键部署脚本
@@ -70,7 +71,8 @@ pip3 install flask flask-wtf dnspython
 
 # 2. 部署应用
 mkdir -p /opt/regisguard
-cp -r app.py config.py domains.json requirements.txt templates static scripts /opt/regisguard/
+cp -r app.py config.py db.py domains.json requirements.txt \
+  templates static scripts /opt/regisguard/
 cp regisguard.service /etc/systemd/system/
 
 # 3. 配置环境变量（可选）
@@ -89,40 +91,41 @@ systemctl start regisguard
 
 ## 数据模型
 
-### domains.json
+### SQLite 数据库
 
-```json
-{
-  "domains": [
-    {
-      "domain": "www.example.com",
-      "keyword": "example",
-      "gradient": "linear-gradient(45deg, #00f2fe, #4facfe)",
-      "https_enabled": false
-    }
-  ],
-  "settings": {
-    "web_root": "/var/www/construction_page",
-    "nginx_conf": "/etc/nginx/conf.d/regisguard.conf",
-    "ssl_dir": "/etc/letsencrypt/live",
-    "ssl_global_enabled": true,
-    "force_https_redirect": true,
-    "allowed_ips": ""
-  }
-}
-```
+数据存储在 `data/regisguard.db` 中，使用 WAL 模式支持并发读写。首次启动时自动从 `domains.json` 迁移数据。
 
-### 字段说明
+#### domains 表
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `domain` | string | 完整域名（如 `www.example.com`） |
-| `keyword` | string | 用于前端页面识别的匹配关键字 |
-| `gradient` | string | CSS 渐变值，用于建设中页面的品牌色 |
-| `https_enabled` | boolean | 单域名 HTTPS 开关，开启后自动申请证书 |
-| `ssl_global_enabled` | boolean | 内部字段，始终为 `true` |
-| `force_https_redirect` | boolean | 内部字段，始终为 `true`，启用 HTTPS 自动 301 跳转 |
-| `allowed_ips` | string | IP 白名单列表，逗号分隔，留空表示不限制 |
+| `id` | INTEGER | 主键，自增 |
+| `domain` | TEXT | 完整域名（如 `www.example.com`），唯一约束 |
+| `keyword` | TEXT | 用于前端页面识别的匹配关键字 |
+| `gradient` | TEXT | CSS 渐变值，用于建设中页面的品牌色 |
+| `https_enabled` | INTEGER | 单域名 HTTPS 开关（0/1），开启即自动申请证书 |
+| `created_at` | TIMESTAMP | 创建时间 |
+| `updated_at` | TIMESTAMP | 更新时间 |
+
+#### settings 表
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `key` | TEXT | 设置键名，主键 |
+| `value` | TEXT | 设置值 |
+
+支持的设置键：
+
+| 键名 | 说明 |
+| --- | --- |
+| `allowed_ips` | IP 白名单列表，逗号分隔，留空表示不限制 |
+| `admin_password` | 管理员密码，留空时使用环境变量回退 |
+
+### domains.json（仅用于初始迁移）
+
+首次启动后，`domains.json` 中的数据会自动迁移至 SQLite 数据库，
+此后该文件不再使用。如需重置数据，可删除 `data/regisguard.db`
+并保留 `domains.json`。
 
 ## API 接口
 
@@ -186,7 +189,8 @@ systemctl start regisguard
 IP 白名单支持两级配置，登录前拦截：
 
 1. **管理面板配置**（优先）：全局设置中的"IP 白名单"输入框，逗号分隔多个 IP
-2. **环境变量回退**：`REGISGUARD_ALLOWED_IPS` 环境变量，当 domains.json 中未配置时生效
+2. **环境变量回退**：`REGISGUARD_ALLOWED_IPS` 环境变量，
+   当 settings 表中未配置时生效
 
 支持 `X-Forwarded-For` 和 `X-Real-IP` 获取真实客户端 IP。
 
