@@ -94,8 +94,13 @@ def generate_nginx(domains_data, settings=None):
         names_str = " ".join(names)
 
         has_ssl = item.get("https_enabled", False)
-        cert_path = os.path.join(SSL_DIR, bare, "fullchain.pem")
-        key_path = os.path.join(SSL_DIR, bare, "privkey.pem")
+
+        # Cert may live under bare domain or www.{bare} depending on
+        # which domains resolved at issue time. Check both paths.
+        bare_cert = os.path.join(SSL_DIR, bare, "fullchain.pem")
+        www_cert = os.path.join(SSL_DIR, f"www.{bare}", "fullchain.pem")
+        cert_path = bare_cert if os.path.exists(bare_cert) else www_cert
+        key_path = cert_path.replace("fullchain.pem", "privkey.pem")
         ssl_ready = has_ssl and os.path.exists(cert_path)
 
         acme_block = f"""

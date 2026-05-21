@@ -5,6 +5,8 @@ from datetime import datetime
 
 import dns.resolver
 
+from config import SSL_DIR
+
 logger = logging.getLogger(__name__)
 
 CERTBOT = "/usr/bin/certbot"
@@ -23,11 +25,26 @@ def _check_domain_resolvable(domain):
     return False
 
 
+def _get_cert_path(domain):
+    """Find the actual cert directory for a domain (bare or www prefix)."""
+    bare = domain.replace("www.", "")
+    bare_cert = os.path.join(SSL_DIR, bare, "fullchain.pem")
+    www_cert = os.path.join(SSL_DIR, f"www.{bare}", "fullchain.pem")
+    if os.path.exists(bare_cert):
+        return bare_cert
+    if os.path.exists(www_cert):
+        return www_cert
+    return None
+
+
 def issue_certificate(domain, webroot=None, email=None):
     """Use Certbot webroot mode to request a per-domain certificate.
 
-    Only includes domains that actually resolve (have A/AAAA records).
-    If neither the www nor bare domain resolves, returns an error.
+    Checks DNS resolution for www.{bare} and {bare} independently.
+    Only resolvable domains are included in the certbot -d list, so
+    the request succeeds even if one side lacks DNS. Both names are
+    requested together in a single certbot call (same certificate).
+    If neither resolves, returns an error without calling certbot.
     """
     webroot = webroot or DEFAULT_WEBROOT
     bare_domain = domain.replace("www.", "")
@@ -46,6 +63,9 @@ def issue_certificate(domain, webroot=None, email=None):
         logger.error("Certificate issue skipped for %s: %s", domain, msg)
         return {"status": "error", "message": msg}
 
+    # Build -d list conditionally based on DNS resolution.
+    # Both domains belong to the same certificate; only include
+    # resolvable ones to avoid Certbot validation failures.
     domains_to_request = []
     if www_ok:
         domains_to_request.extend(["-d", www_domain])
@@ -55,7 +75,7 @@ def issue_certificate(domain, webroot=None, email=None):
     cmd = [
         CERTBOT, "certonly",
         "--webroot", "-w", webroot,
-    ] + domains_to_request + [
+        *domains_to_request,
         "--non-interactive",
         "--agree-tos",
         "--email", email,
@@ -68,11 +88,17 @@ def issue_certificate(domain, webroot=None, email=None):
 
     if result.returncode == 0:
         logger.info("Certificate issued for %s", domain)
+        # Certbot creates the directory using the first -d argument.
+        cert_dir = _get_cert_path(domain)
+        cert_path = cert_dir if cert_dir else (
+            f"/etc/letsencrypt/live/{bare_domain}/fullchain.pem"
+        )
+        key_path = cert_path.replace("fullchain.pem", "privkey.pem")
         return {
             "status": "success",
             "message": f"Certificate for {domain} issued successfully",
-            "cert_path": f"/etc/letsencrypt/live/{bare_domain}/fullchain.pem",
-            "key_path": f"/etc/letsencrypt/live/{bare_domain}/privkey.pem",
+            "cert_path": cert_path,
+            "key_path": key_path,
         }
     logger.error("Certificate issue failed for %s: %s", domain, result.stderr)
     return {"status": "error", "message": result.stderr}
@@ -80,8 +106,8 @@ def issue_certificate(domain, webroot=None, email=None):
 
 def check_cert_status(bare_domain):
     """Check certificate existence and expiry for a domain."""
-    cert_path = f"/etc/letsencrypt/live/{bare_domain}/cert.pem"
-    if not os.path.exists(cert_path):
+    cert_path = _get_cert_path(bare_domain)
+    if not cert_path:
         return {"https_enabled": False, "status": "no_cert", "expiry": None}
 
     # Parse expiry date from the certificate file
@@ -105,9 +131,9 @@ def renew_certificate(domain, webroot=None):
     """Renew certificate for a domain."""
     webroot = webroot or DEFAULT_WEBROOT
     bare_domain = domain.replace("www.", "")
-    cert_path = f"/etc/letsencrypt/live/{bare_domain}/cert.pem"
 
-    if not os.path.exists(cert_path):
+    cert_path = _get_cert_path(domain)
+    if not cert_path:
         return {"status": "error",
                 "message": f"No certificate found for {bare_domain}"}
 
@@ -115,22 +141,23 @@ def renew_certificate(domain, webroot=None):
     www_ok = _check_domain_resolvable(www_domain)
     bare_ok = _check_domain_resolvable(bare_domain)
 
+    if not www_ok and not bare_ok:
+        msg = (f"Neither {www_domain} nor {bare_domain} resolves, "
+               f"skipping renewal")
+        logger.warning("Certificate renewal skipped for %s: %s", domain, msg)
+        return {"status": "error", "message": msg}
+
+    # Build -d list conditionally based on DNS resolution.
     domains_to_request = []
     if www_ok:
         domains_to_request.extend(["-d", www_domain])
     if bare_ok:
         domains_to_request.extend(["-d", bare_domain])
 
-    if not domains_to_request:
-        msg = (f"Neither {www_domain} nor {bare_domain} resolves, "
-               f"skipping renewal")
-        logger.warning("Certificate renewal skipped for %s: %s", domain, msg)
-        return {"status": "error", "message": msg}
-
     cmd = [
         CERTBOT, "certonly",
         "--webroot", "-w", webroot,
-    ] + domains_to_request + [
+        *domains_to_request,
         "--non-interactive",
         "--agree-tos",
         "--force-renewal",
@@ -154,8 +181,8 @@ def renew_all_certificates(domains_data, webroot=None):
     for item in domains_data:
         if item.get("https_enabled"):
             bare = item["domain"].replace("www.", "")
-            cert_path = f"/etc/letsencrypt/live/{bare}/cert.pem"
-            if os.path.exists(cert_path):
+            cert_path = _get_cert_path(item["domain"])
+            if cert_path:
                 result = renew_certificate(item["domain"], webroot)
                 results.append({"domain": item["domain"], **result})
             else:

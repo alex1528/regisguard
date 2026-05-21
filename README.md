@@ -187,6 +187,23 @@ systemctl start regisguard
 | `www.example.org` | `info@example.org` |
 | `www.example.net` | `info@example.net` |
 
+## 证书申请策略
+
+每个域名的证书统一在单次 certbot 调用中申请，www 子域名与裸域名
+包含在同一张证书中，不分开申请。系统会先检测 DNS 解析状态：
+
+| www 解析 | 裸域名解析 | certbot -d 参数 |
+| --- | --- | --- |
+| 有效 | 有效 | `-d www.{bare} -d {bare}` |
+| 有效 | 无效 | `-d www.{bare}` |
+| 无效 | 有效 | `-d {bare}` |
+| 无效 | 无效 | 跳过申请，提示配置 DNS |
+
+证书目录以 Certbot 首个 `-d` 参数命名，系统会自动检查裸域名和
+`www.` 前缀两条路径，确保无论哪个目录存在都能正确加载。
+
+证书申请失败时自动回退至 HTTP 状态，并在管理面板显示失败原因。
+
 ## IP 白名单 ACL
 
 IP 白名单支持两级配置，登录前拦截：
