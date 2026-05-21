@@ -5,15 +5,16 @@ function log(msg) {
     el.innerText = msg;
 }
 
-function api(url, options) {
-    return fetch(url, {
+async function api(url, options) {
+    const res = await fetch(url, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': CSRF_TOKEN,
             ...options.headers,
         },
-    }).then(res => res.json());
+    });
+    return res.json();
 }
 
 // --- Tabs ---
@@ -252,6 +253,20 @@ function saveSettings() {
     };
     api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) }).then(res => {
         log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
+    });
+}
+
+function changePassword() {
+    const newPassword = document.getElementById('admin-password').value;
+    if (!newPassword) {
+        log('❌ 请输入新密码');
+        return;
+    }
+    api('/api/password', { method: 'PUT', body: JSON.stringify({ password: newPassword }) }).then(res => {
+        log(res.status === 'success' ? `✅ ${res.message}` : `❌ ${res.message}`);
+        if (res.status === 'success') {
+            document.getElementById('admin-password').value = '';
+        }
     });
 }
 

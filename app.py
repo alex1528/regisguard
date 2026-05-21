@@ -354,12 +354,21 @@ def start_auto_renew_thread():
 
 # --- Auth Routes ---
 
+def get_admin_password():
+    """Get admin password from settings, fallback to env var."""
+    data = load_data()
+    stored = data.get("settings", {}).get("admin_password", "")
+    if stored:
+        return stored
+    return ADMIN_PASSWORD
+
+
 @app.route("/login", methods=["GET", "POST"])
 @ip_allowed
 def login():
     if request.method == "POST":
         password = request.form.get("password", "")
-        if password == ADMIN_PASSWORD:
+        if password == get_admin_password():
             session["logged_in"] = True
             return redirect(url_for("index"))
         flash("Invalid password", "error")
@@ -506,6 +515,22 @@ def update_settings():
     logger.info("Settings updated: allowed_ips=%s",
                 data["settings"].get("allowed_ips"))
     return jsonify({"status": "success", "message": "Settings updated"})
+
+
+# --- Password Management ---
+
+@app.route("/api/password", methods=["PUT"])
+@login_required
+def change_password():
+    new_password = request.json.get("password", "").strip()
+    if not new_password:
+        return jsonify({"status": "error", "message": "密码不能为空"}), 400
+
+    data = load_data()
+    data["settings"]["admin_password"] = new_password
+    save_data(data)
+    logger.info("Admin password changed")
+    return jsonify({"status": "success", "message": "密码修改成功"})
 
 
 # --- SSL Certificate ---

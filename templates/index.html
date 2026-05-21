@@ -32,6 +32,11 @@
                         <input type="text" id="allowed-ips" placeholder="192.168.1.100,10.0.0.50（留空表示不限制）">
                         <button type="button" class="btn btn-sm btn-primary" onclick="saveSettings()">保存设置</button>
                     </div>
+                    <div class="setting-item">
+                        <label for="admin-password">修改管理员密码</label>
+                        <input type="password" id="admin-password" placeholder="输入新密码（留空表示不修改）">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="changePassword()">修改密码</button>
+                    </div>
                 </div>
             </div>
         </div>

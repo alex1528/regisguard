@@ -11,6 +11,7 @@
 - **单域名 HTTPS 控制** — 每个域名独立控制 HTTPS，开启即自动申请/续期证书，HTTP 自动 301 跳转
 - **DNS A 记录批量检测** — 一键检测所有域名的 www 子域名解析状态
 - **IP 白名单 ACL** — 支持管理面板界面配置，登录前拦截
+- **管理员密码修改** — 支持管理面板界面修改密码，即时生效
 - **零数据库依赖** — JSON 文件存储，轻量易迁移
 - **systemd 自启动** — 服务开机自启，后台自动续期证书
 
@@ -136,7 +137,8 @@ systemctl start regisguard
 | `PUT` | `/api/domains/<index>/https` | 切换单域名 HTTPS（开启时自动申请证书） |
 | `POST` | `/api/apply` | 同步配置并重载 Nginx（保存/删除域名时自动调用） |
 | `GET` | `/api/settings` | 获取全局设置 |
-| `PUT` | `/api/settings` | 更新全局设置 |
+| `PUT` | `/api/settings` | 更新全局设置（仅 IP 白名单） |
+| `PUT` | `/api/password` | 修改管理员密码 |
 | `POST` | `/api/ssl/issue` | 申请 SSL 证书（内部调用） |
 | `POST` | `/api/ssl/renew` | 续期 SSL 证书（内部调用） |
 | `GET` | `/api/ssl/status` | 查询所有证书状态 |
@@ -212,7 +214,7 @@ journalctl -u regisguard -f    # 查看实时日志
 
 | 项目 | 默认值 | 修改方式 |
 | --- | --- | --- |
-| 管理密码 | `admin123` | `REGISGUARD_ADMIN_PASSWORD` 环境变量 |
+| 管理密码 | `admin123` | `REGISGUARD_ADMIN_PASSWORD` 环境变量或管理面板修改 |
 | Secret Key | `change-me-in-production` | `REGISGUARD_SECRET_KEY` 环境变量 |
 | Certbot 邮箱 | `info@{bare_domain}` | 自动按域名生成，无需手动配置 |
 | IP 白名单 | 不限制 | 管理面板全局设置或 `REGISGUARD_ALLOWED_IPS` 环境变量 |
