@@ -1,11 +1,13 @@
 import json
 import os
+import re
 import subprocess
 import logging
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+from pathlib import Path
 
 import dns.resolver
 from flask import (
@@ -103,6 +105,139 @@ def login_required(f):
     return decorated
 
 
+# --- Token helpers (Construction_Page inlining) ---
+
+TOKENS_CSS_PATH = Path(__file__).parent / "static" / "css" / "tokens.css"
+# Matches a single ``--rg-*`` custom-property declaration, capturing the
+# token name (group 1) and its raw value (group 2). The ``[a-z0-9-]+``
+# character class enforces the project convention of lowercase token
+# names; uppercase or other prefixes are intentionally not matched.
+RG_TOKEN_PATTERN = re.compile(r"(--rg-[a-z0-9-]+)\s*:\s*([^;]+);")
+
+
+def _load_tokens_css():
+    """Return the contents of ``static/css/tokens.css``.
+
+    Construction_Page generation must never crash when ``tokens.css`` is
+    missing or unreadable. ``OSError`` (covering both ``FileNotFoundError``
+    and ``PermissionError``) is caught, logged at ``ERROR`` level, and
+    surfaces as an empty string so callers can continue with degraded
+    behaviour rather than aborting ``apply_config``.
+    """
+    try:
+        return TOKENS_CSS_PATH.read_text(encoding="utf-8")
+    except OSError as e:
+        logger.error("Failed to read tokens.css at %s: %s",
+                     TOKENS_CSS_PATH, e)
+        return ""
+
+
+def _extract_tokens(css_text):
+    """Parse ``css_text`` into ``{selector: {token_name: token_value}}``.
+
+    The result groups every ``--rg-*`` custom property by the
+    (top-level) selector block it appears in. Values are ``strip()``-ed
+    so leading / trailing whitespace does not affect later comparison;
+    internal whitespace inside the value is preserved verbatim. Token
+    names are case-sensitive — the regex enforces lowercase per project
+    convention.
+
+    Robustness contract: on malformed input (unbalanced braces, missing
+    semicolons, junk between declarations) the function never raises.
+    Instead it returns the largest parseable subset, which is exactly
+    what the design's "解析失败时返回最大可解析子集" rule asks for.
+    """
+    result = {}
+    if not css_text:
+        return result
+
+    # Strip block comments first; otherwise tokens declared *inside* a
+    # comment (e.g. examples, deprecated values) would leak into the
+    # output. ``re.DOTALL`` lets ``.`` cross newlines.
+    cleaned = re.sub(r"/\*.*?\*/", "", css_text, flags=re.DOTALL)
+
+    pos = 0
+    length = len(cleaned)
+    while pos < length:
+        brace_open = cleaned.find("{", pos)
+        if brace_open == -1:
+            break
+        selector = cleaned[pos:brace_open].strip()
+
+        # Walk braces to find the matching ``}``. Plain rule bodies have
+        # no nested blocks, but ``@media`` / ``@supports`` wrappers do —
+        # depth tracking lets the loop skip past those wrappers cleanly
+        # when they appear at the top level (their inner ``--rg-*``
+        # declarations are picked up via their own selector pass once we
+        # advance ``pos`` past the wrapper).
+        depth = 1
+        i = brace_open + 1
+        while i < length and depth > 0:
+            ch = cleaned[i]
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+            i += 1
+        body_end = i - 1 if depth == 0 else length
+        body = cleaned[brace_open + 1:body_end]
+
+        if selector:
+            tokens = {}
+            for match in RG_TOKEN_PATTERN.finditer(body):
+                name = match.group(1)
+                value = match.group(2).strip()
+                tokens[name] = value
+            if tokens:
+                # Same selector may appear in multiple blocks; merge with
+                # last-write-wins semantics matching the CSS cascade.
+                if selector in result:
+                    result[selector].update(tokens)
+                else:
+                    result[selector] = tokens
+
+        pos = i
+
+    return result
+
+
+def _compare_tokens(source, inlined):
+    """Return token names that differ between ``source`` and ``inlined``.
+
+    Both inputs are the per-selector dictionaries returned by
+    ``_extract_tokens``. A name is reported when, in any selector group
+    appearing on either side, the token is missing on one side or its
+    value differs after ``strip()`` (character-by-character, case
+    preserved). Returned names are de-duplicated while preserving first-
+    seen order so the resulting list reads cleanly in log output, e.g.
+    ``logger.warning("...: %s", names)``.
+
+    An empty list means the two sides are equivalent under the design's
+    comparison rule (token name set equality + per-token value equality
+    after ``strip()``).
+    """
+    inconsistent = []
+    seen = set()
+
+    selectors = set(source.keys()) | set(inlined.keys())
+    for selector in selectors:
+        src_tokens = source.get(selector, {})
+        inl_tokens = inlined.get(selector, {})
+        names = set(src_tokens.keys()) | set(inl_tokens.keys())
+        for name in names:
+            src_val = src_tokens.get(name)
+            inl_val = inl_tokens.get(name)
+            if src_val is None or inl_val is None:
+                differs = True
+            else:
+                differs = src_val.strip() != inl_val.strip()
+            if differs and name not in seen:
+                inconsistent.append(name)
+                seen.add(name)
+
+    return inconsistent
+
+
 def generate_html(domains_data):
     js_routes = ""
     for idx, item in enumerate(domains_data):
@@ -113,6 +248,28 @@ def generate_html(domains_data):
             f"            }}\n"
         )
 
+    # Read the canonical tokens.css and prepare to inline it verbatim.
+    # When the file is missing _load_tokens_css already logged ERROR and
+    # returned ""; the page still renders (var(--rg-*) references fall
+    # through to browser defaults) so apply_config stays non-blocking.
+    tokens_text = _load_tokens_css()
+    source_tokens = _extract_tokens(tokens_text)
+
+    # Public-page FOUC suppression script — matchMedia only. The
+    # Construction_Page is shown to anonymous visitors so we deliberately
+    # do not read or write localStorage and never reference the
+    # ``regisguard-theme`` storage key (Property 14, R3.10/R4.3).
+    fouc_script = """    <script>
+    (function () {
+        var resolved = 'light';
+        try {
+            var mql = window.matchMedia('(prefers-color-scheme: dark)');
+            if (mql && mql.matches) resolved = 'dark';
+        } catch (e) { /* matchMedia unavailable: keep light */ }
+        document.documentElement.setAttribute('data-theme', resolved);
+    })();
+    </script>"""
+
     html_content = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -121,16 +278,33 @@ def generate_html(domains_data):
     <meta name="robots" content="noarchive, noindex">
     <title>系统提示</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif; }}
-        body {{ background: radial-gradient(circle at top right, #0a1128, #020617); color: #f1f5f9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 2rem 1rem; }}
+{tokens_text}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; font-family: var(--rg-font-family); }}
+        body {{ background: var(--rg-color-bg-default); color: var(--rg-color-fg-default); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: var(--rg-space-lg) var(--rg-space-md); }}
         .main-content {{ flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }}
-        .container {{ text-align: center; padding: 4rem 2rem; max-width: 500px; width: 100%; background: rgba(255, 255, 255, 0.02); border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.06); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }}
-        .logo {{ font-size: 2.6rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 0.5rem; line-height: 1.2; }}
-        .notice-banner {{ display: inline-flex; align-items: center; gap: 8px; margin-top: 1.5rem; padding: 12px 28px; background: linear-gradient(135deg, #ff4d4f, #ff7875); color: #ffffff; font-size: 1.3rem; font-weight: bold; border-radius: 8px; box-shadow: 0 0 25px rgba(255, 77, 79, 0.35); animation: pulse 2s infinite ease-in-out; }}
-        .footer {{ text-align: center; font-size: 0.8rem; color: #475569; margin-top: 2rem; width: 100%; letter-spacing: 0.5px; }}
-        @keyframes pulse {{ 0% {{ transform: scale(1); box-shadow: 0 0 25px rgba(255, 77, 79, 0.35); }} 50% {{ transform: scale(1.03); box-shadow: 0 0 40px rgba(255, 77, 79, 0.6); }} 100% {{ transform: scale(1); box-shadow: 0 0 25px rgba(255, 77, 79, 0.35); }} }}
-        @media (max-width: 480px) {{ .logo {{ font-size: 1.8rem; }} .notice-banner {{ font-size: 1.1rem; padding: 10px 20px; }} }}
+        .container {{ text-align: center; padding: 4rem var(--rg-space-lg); max-width: 500px; width: 100%; background: var(--rg-color-bg-surface); border: 1px solid var(--rg-color-border-default); border-radius: var(--rg-radius-lg); box-shadow: var(--rg-shadow-lg); }}
+        .logo {{ font-size: 2.6rem; font-weight: 800; letter-spacing: 1px; margin-bottom: var(--rg-space-sm); line-height: 1.2; }}
+        .notice-banner {{ display: inline-flex; align-items: center; gap: var(--rg-space-sm); margin-top: var(--rg-space-lg); padding: 12px 28px; background: var(--rg-color-danger); color: var(--rg-color-on-accent); font-size: var(--rg-font-size-lg); font-weight: bold; border-radius: var(--rg-radius-md); box-shadow: var(--rg-shadow-lg); animation: pulse 2s infinite ease-in-out; }}
+        .footer {{ text-align: center; font-size: var(--rg-font-size-sm); color: var(--rg-color-fg-muted); margin-top: var(--rg-space-lg); width: 100%; letter-spacing: 0.5px; }}
+        @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.03); }} 100% {{ transform: scale(1); }} }}
+        @media (max-width: 480px) {{ .logo {{ font-size: 1.8rem; }} .notice-banner {{ font-size: var(--rg-font-size-base); padding: var(--rg-space-sm) var(--rg-space-md); }} }}
+        @supports not (background-clip: text) {{ .logo {{ color: var(--rg-color-fg-default); -webkit-text-fill-color: var(--rg-color-fg-default); }} }}
+        /* :focus-visible 焦点指示器（R12.2、R12.3、R12.4）。
+           本页面无交互元素，但保留通用规则与其余 CSS 源保持一致。 */
+        :focus-visible {{ outline: 2px solid var(--rg-color-focus-ring); outline-offset: 2px; }}
+        /* Reduced-motion (Property 21, R13.1–R13.4)：!important 仅作用于动效时长，
+           不用于颜色（不违反 R11.5）。.notice-banner 关停 pulse 动画并消除 transform，
+           保留 background / color / border-radius / box-shadow 作为视觉强调。 */
+        @media (prefers-reduced-motion: reduce) {{
+            *, *::before, *::after {{
+                transition-duration: 0.01s !important;
+                animation-duration: 0.01s !important;
+                animation-iteration-count: 1 !important;
+            }}
+            .notice-banner {{ animation: none; transform: none; }}
+        }}
     </style>
+{fouc_script}
 </head>
 <body>
     <div class="main-content">
@@ -149,7 +323,7 @@ def generate_html(domains_data):
 {js_routes}
             else {{
                 const defaultName = window.location.host.toUpperCase() || "SYSTEM";
-                setTheme(defaultName, "linear-gradient(45deg, #9fa8da, #c5cae9)");
+                setTheme(defaultName, "linear-gradient(45deg, var(--rg-color-accent), var(--rg-color-accent-hover))");
             }}
 
             function setTheme(name, gradient) {{
@@ -163,6 +337,20 @@ def generate_html(domains_data):
     </script>
 </body>
 </html>"""
+
+    # Re-parse the emitted <style> block to verify the inlined tokens
+    # match the canonical source. The check is informational — it must
+    # never block apply_config; on drift we just log a WARNING so ops
+    # can investigate (R10.5/R10.6, Property 12).
+    style_match = re.search(r"<style[^>]*>(.*?)</style>",
+                            html_content, re.DOTALL)
+    inlined_tokens = (
+        _extract_tokens(style_match.group(1)) if style_match else {}
+    )
+    drift = _compare_tokens(source_tokens, inlined_tokens)
+    if drift:
+        logger.warning("Construction page tokens out of sync: %s", drift)
+
     return html_content
 
 

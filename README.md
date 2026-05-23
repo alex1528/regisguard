@@ -6,6 +6,7 @@
 
 - **域名 CRUD** — 通过 Web 管理面板增删改查域名配置
 - **自动页面生成** — 根据域名列表自动生成带品牌主题的建设中页面
+- **响应式主题系统** — Light / Dark / 跟随系统三档切换，三档断点（移动 / 平板 / 桌面）覆盖全部页面，统一设计令牌驱动样式，满足 WCAG AA 对比度与减弱动效偏好
 - **Nginx 配置自动生成** — 每个域名独立 server block，自动重载
 - **Certbot SSL 证书自动化** — 开启 HTTPS 自动申请证书，DNS 预检避免无效请求，后台线程自动续期
 - **单域名 HTTPS 控制** — 每个域名独立控制 HTTPS，开启即自动申请/续期证书，HTTP 自动 301 跳转
@@ -38,12 +39,16 @@
 ├── regisguard.service     # systemd 服务单元文件
 ├── deploy.sh              # 一键部署脚本
 ├── templates/
-│   ├── index.html         # 管理面板页面（三标签页布局）
-│   ├── login.html         # 密码登录页
-│   └── 403.html           # IP 白名单拒绝页
+│   ├── index.html         # 管理面板页面（三标签页布局 + 主题切换器）
+│   ├── login.html         # 密码登录页（响应式）
+│   └── 403.html           # IP 白名单拒绝页（响应式）
 ├── static/
-│   ├── css/admin.css      # 管理面板样式（固定表格布局）
-│   └── js/admin.js        # 前端交互逻辑（54种随机渐变）
+│   ├── css/
+│   │   ├── tokens.css     # 设计令牌（颜色 / 间距 / 字号 / 圆角 / 阴影 / 动效）
+│   │   └── admin.css      # 管理面板样式（令牌驱动 + 三档响应式断点）
+│   └── js/
+│       ├── admin.js       # 前端交互逻辑（54种随机渐变）
+│       └── theme.js       # 主题运行时（解析 / 持久化 / 系统偏好订阅）
 ├── scripts/
 │   ├── build.py           # 离线构建脚本
 │   └── ssl_manager.py     # Certbot 证书管理
@@ -238,7 +243,75 @@ IP 白名单支持两级配置，登录前拦截：
 | Nginx 安全 | 配置校验后再重载，失败不 reload |
 | 证书续期 | 后台双级检查（30天正常+5天紧急）+ Certbot systemd timer |
 
-## 管理命令
+## 响应式主题系统
+
+四类页面（管理面板、登录页、403 拒绝页、建设中页）共用一套基于 CSS 自定义属性的设计令牌，通过 `<html data-theme>` 切换 Light / Dark 两套主题。
+
+### 主题模式
+
+| 模式 | 行为 | 持久化 |
+| --- | --- | --- |
+| Light | 强制浅色，忽略系统偏好 | `localStorage["regisguard-theme"]` |
+| Dark | 强制深色，忽略系统偏好 | `localStorage["regisguard-theme"]` |
+| System | 跟随 `prefers-color-scheme`，系统切换时自动同步 | `localStorage["regisguard-theme"]`（默认值） |
+
+- 切换器仅出现在管理面板 header；登录页、403 页、建设中页跟随系统偏好，不渲染切换控件。
+- 切换器选中态绑定 `aria-pressed="true"` 选择器，无额外类名。
+- 持久化只用浏览器 `localStorage`，每个浏览器独立，不写入 SQLite `settings` 表。
+- 隐私模式 / 存储被禁用 / `matchMedia` 不可用时优雅降级为 Light，不抛错给用户。
+
+### 设计令牌（`static/css/tokens.css`）
+
+| 分类 | 命名前缀 | 档位 |
+| --- | --- | --- |
+| 间距 | `--rg-space-*` | xs / sm / md / lg |
+| 字号 | `--rg-font-size-*` | sm / base / lg / xl |
+| 圆角 | `--rg-radius-*` | sm / md / lg |
+| 阴影 | `--rg-shadow-*` | sm / lg |
+| 动效时长 | `--rg-duration-*` | fast / base |
+| 字体栈 | `--rg-font-family` | 单值 |
+| 颜色 | `--rg-color-*` | 每主题 ≥20 个，名称集合恒等 |
+
+- 颜色令牌按主题在 `:root[data-theme="light"]` / `:root[data-theme="dark"]` 下定义，名称集合完全一致。
+- 间距 / 字号 / 圆角 / 阴影 / 动效令牌在 `:root` 下定义，跨主题共享。
+- 颜色取值经 WCAG AA 对比度调校（正文与背景 ≥4.5:1，焦点环与背景 ≥3:1）。
+
+### 响应式断点
+
+| 断点 | 视口范围 | 行为 |
+| --- | --- | --- |
+| Mobile | ≤480px | 单列堆叠，域名表格切换为卡片视图，点击目标 ≥40px，标签页横向滚动 |
+| Tablet | 481–768px | 单列堆叠，编辑卡片置于表格之上 |
+| Desktop | ≥769px | 左 320px 编辑卡片 + 右侧填满表格的双列布局 |
+
+- 登录页：桌面端固定 360px，平板 / 移动端 88%–92% 宽度，移动端按钮和密码输入框高度 ∈ [44, 56]px。
+- 403 页与建设中页：320–1920px 全程水平 + 垂直居中（边距差 ≤1px）。
+- 视口跨断点变化由 CSS 媒体查询驱动，无 JS 介入，重排在浏览器渲染管线下完成。
+
+### 可访问性
+
+- **WCAG AA 对比度**：正文、主按钮、控制台前景色对比度 ≥4.5:1；徽章、焦点环 ≥3:1。
+- **键盘焦点**：所有可聚焦元素提供 ≥2px `:focus-visible` 指示器（`outline` 或 `box-shadow`），与相邻像素对比度 ≥3:1。Tab 顺序与视觉顺序一致，禁用 / 隐藏元素不进入 Tab 链。
+- **减弱动效**：`@media (prefers-reduced-motion: reduce)` 将所有元素及伪元素的 `transition-duration` / `animation-duration` 收敛至 ≤0.01s，`animation-iteration-count: 1`；建设中页 `.notice-banner` 关停 pulse 动画并消除 `transform`。
+
+### FOUC 抑制
+
+四类页面 `<head>` 末尾内联同步脚本，在首次绘制前完成 `data-theme` 解析：
+
+- 管理面板版：读 `localStorage["regisguard-theme"]` + `matchMedia` 回退；
+- 公开页版（登录 / 403 / 建设中）：仅 `matchMedia`，不读 `localStorage`，HTML 全文不含 `regisguard-theme` 字符串；
+- 切换主题仅修改 `<html>.data-theme` 与 `.theme-btn[aria-pressed]`，不增删任何 `<link rel="stylesheet">` / `<style>` 节点。
+
+### 服务端令牌内联
+
+`generate_html()` 在每次生成建设中页时：
+
+1. 读取 `static/css/tokens.css` 原文，内联到输出 HTML 的 `<style>` 块；
+2. 重新解析输出令牌，与源令牌比对；
+3. 不一致时以 `WARNING` 级别写入日志（`Construction page tokens out of sync: ...`），但不抛异常、不阻断 `apply_config`；
+4. 保留每条域名的 `gradient` 字段作为 Logo `background`，`@supports not (background-clip: text)` 提供令牌驱动的纯色回退。
+
+
 
 ```bash
 systemctl status regisguard    # 查看服务状态

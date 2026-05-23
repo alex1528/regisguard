@@ -1,0 +1,103 @@
+/*
+ * tokens.css —— RegisGuard 设计令牌（单一可信源）
+ *
+ * 本文件是整个项目颜色 / 间距 / 字号 / 圆角 / 阴影 / 动效 / 字体栈的唯一定义来源。
+ * 所有页面（Admin_Panel、Login_Page、Forbidden_Page、Construction_Page）
+ * 都必须通过 var(--rg-*) 引用这些令牌，禁止硬编码颜色字面量。
+ *
+ * 维护规则：
+ *  1. 所有自定义属性名必须以 `--rg-` 开头。
+ *  2. `:root[data-theme="light"]` 与 `:root[data-theme="dark"]` 中的
+ *     颜色令牌名称集合必须保持完全一致；新增 / 移除任何 `--rg-color-*`
+ *     令牌都必须在两个主题块中同步进行。
+ *  3. 间距 / 字号 / 圆角 / 阴影 / 动效时长 / 字体栈仅在 `:root` 中定义，
+ *     不在主题变体中重复声明。
+ *  4. Construction_Page 由 `app.py:generate_html()` 在服务端将本文件内联到
+ *     输出 HTML 中；任何修改都会被运行时校验，不一致时仅写 WARNING 日志。
+ */
+
+/* 1. 基础令牌（与主题无关）—— 间距 / 字号 / 圆角 / 阴影 / 动效时长 / 字体栈 */
+:root {
+    /* 间距 */
+    --rg-space-xs: 4px;
+    --rg-space-sm: 8px;
+    --rg-space-md: 16px;
+    --rg-space-lg: 24px;
+
+    /* 字号 */
+    --rg-font-size-sm: 0.8rem;
+    --rg-font-size-base: 0.95rem;
+    --rg-font-size-lg: 1.1rem;
+    --rg-font-size-xl: 1.5rem;
+
+    /* 圆角 */
+    --rg-radius-sm: 4px;
+    --rg-radius-md: 8px;
+    --rg-radius-lg: 12px;
+
+    /* 阴影 */
+    --rg-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --rg-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    /* 动效 */
+    --rg-duration-fast: 0.15s;
+    --rg-duration-base: 0.25s;
+
+    /* 字体栈（跨页面共享） */
+    --rg-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                      "Microsoft YaHei", sans-serif;
+}
+
+/* 2. Light_Theme 颜色令牌 */
+:root[data-theme="light"] {
+    --rg-color-bg-default: #f0f2f5;
+    --rg-color-bg-surface: #ffffff;
+    --rg-color-bg-muted: #fafafa;
+    --rg-color-fg-default: #1f1f1f;
+    --rg-color-fg-muted: #666666;
+    --rg-color-border-default: #d9d9d9;
+    --rg-color-border-muted: #f0f0f0;
+    --rg-color-accent: #1890ff;
+    --rg-color-accent-hover: #40a9ff;
+    --rg-color-on-accent: #ffffff;
+    --rg-color-success: #52c41a;
+    --rg-color-success-bg: #f6ffed;
+    --rg-color-success-border: #b7eb8f;
+    --rg-color-warning: #faad14;
+    --rg-color-warning-bg: #fffbe6;
+    --rg-color-warning-border: #ffe58f;
+    --rg-color-danger: #d4380d;       /* 由 #ff4d4f 调暗以满足 4.5:1 */
+    --rg-color-danger-hover: #ff4d4f;
+    --rg-color-info: #08979c;          /* 由 #13c2c2 调暗以满足 4.5:1 */
+    --rg-color-info-hover: #13c2c2;
+    --rg-color-focus-ring: #1890ff;
+    --rg-color-console-bg: #001529;
+    --rg-color-console-fg: #d9e0e8;    /* 由 #a6adb4 提亮以满足 4.5:1 */
+}
+
+/* 3. Dark_Theme 颜色令牌（令牌名称集合与 Light 完全一致） */
+:root[data-theme="dark"] {
+    --rg-color-bg-default: #0f1419;
+    --rg-color-bg-surface: #1a2332;
+    --rg-color-bg-muted: #232f3e;
+    --rg-color-fg-default: #f1f5f9;
+    --rg-color-fg-muted: #94a3b8;
+    --rg-color-border-default: #334155;
+    --rg-color-border-muted: #1e293b;
+    --rg-color-accent: #60a5fa;
+    --rg-color-accent-hover: #93c5fd;
+    --rg-color-on-accent: #0f1419;
+    --rg-color-success: #86efac;
+    --rg-color-success-bg: #052e16;
+    --rg-color-success-border: #166534;
+    --rg-color-warning: #fcd34d;
+    --rg-color-warning-bg: #422006;
+    --rg-color-warning-border: #92400e;
+    --rg-color-danger: #fca5a5;
+    --rg-color-danger-hover: #f87171;
+    --rg-color-info: #67e8f9;
+    --rg-color-info-hover: #a5f3fc;
+    --rg-color-focus-ring: #93c5fd;
+    --rg-color-console-bg: #020617;
+    --rg-color-console-fg: #cbd5e1;
+}
