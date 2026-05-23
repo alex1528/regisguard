@@ -209,8 +209,11 @@ td:nth-child(2) code { font-size: 0.85rem; }
         transform: translateY(-50%);
     }
 
-    /* 域名表格切换为卡片视图：每张卡片至少展示
-     * 1) 完整域名 2) HTTPS 开关 3) 证书状态徽章 4) "编辑" 5) "删除" 共 5 项 */
+    /* 域名表格切换为卡片视图：保留 7 列全部信息——
+     *   1) 完整域名 2) 匹配关键字 3) 色彩 4) HTTPS 开关
+     *   5) 证书徽章 6) 到期时间 7) 操作
+     * 移动端通过 ::before 注入字段标签，避免桌面端 table-layout: fixed
+     * 列宽（220+100+50+55+70+140+120=755px）超出 ≤480px 视口的问题。 */
     #tab-domains table { display: block; width: 100%; table-layout: auto; }
     #tab-domains table thead { display: none; }
     #tab-domains table tbody { display: block; }
@@ -233,17 +236,37 @@ td:nth-child(2) code { font-size: 0.85rem; }
         white-space: normal;
         overflow: visible;
         text-overflow: clip;
+        word-break: break-all;
         font-size: var(--rg-font-size-base);
     }
-    /* 在卡片视图中隐藏：匹配关键字（2）/ 色彩预览（3）/ 到期时间（6） */
-    #tab-domains table td:nth-child(2),
-    #tab-domains table td:nth-child(3),
-    #tab-domains table td:nth-child(6) { display: none; }
     /* 域名独占首行 */
     #tab-domains table td:nth-child(1) {
         grid-column: 1 / -1;
         font-size: var(--rg-font-size-lg);
-        word-break: break-all;
+        padding-bottom: var(--rg-space-xs);
+        border-bottom: 1px solid var(--rg-color-border-muted);
+    }
+    /* 匹配关键字：整行 + ::before 注入字段标签 */
+    #tab-domains table td:nth-child(2) {
+        grid-column: 1 / -1;
+        color: var(--rg-color-fg-default);
+    }
+    #tab-domains table td:nth-child(2)::before {
+        content: "关键字: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    /* 色彩预览：整行 + ::before 注入字段标签，色块与标签同行 */
+    #tab-domains table td:nth-child(3) {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: var(--rg-space-sm);
+    }
+    #tab-domains table td:nth-child(3)::before {
+        content: "色彩: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
     }
     /* HTTPS 开关左列 */
     #tab-domains table td:nth-child(4) {
@@ -254,6 +277,16 @@ td:nth-child(2) code { font-size: 0.85rem; }
     #tab-domains table td:nth-child(5) {
         grid-column: 2 / 3;
         justify-self: end;
+    }
+    /* 到期时间：整行 + ::before 注入字段标签 */
+    #tab-domains table td:nth-child(6) {
+        grid-column: 1 / -1;
+        color: var(--rg-color-fg-default);
+    }
+    #tab-domains table td:nth-child(6)::before {
+        content: "到期: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
     }
     /* 操作按钮独占一行，等分宽度 */
     #tab-domains table td.actions {
