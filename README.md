@@ -149,7 +149,7 @@ systemctl start regisguard
 | `PUT` | `/api/password` | 修改管理员密码 |
 | `POST` | `/api/ssl/issue` | 申请 SSL 证书（内部调用） |
 | `POST` | `/api/ssl/renew` | 续期 SSL 证书（内部调用） |
-| `GET` | `/api/ssl/status` | 查询所有证书状态 |
+| `GET` | `/api/ssl/status` | 查询所有证书状态（页面加载时由 `loadCertStatus()` 调用，回填"管理域名"列表的"到期时间"列） |
 | `POST` | `/api/dns/check` | 批量检测域名 A 记录 |
 
 ## 单域名 HTTPS 控制

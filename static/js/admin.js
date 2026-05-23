@@ -180,6 +180,19 @@ function deleteDomain(index) {
 }
 
 // --- Certificate Status ---
+function formatCertExpiry(raw) {
+    // Certbot 输出形如 "Jun 15 12:00:00 2025 GMT"。
+    // 现代浏览器可直接 parse；解析失败时回退原始文本，避免误判为"未申请"。
+    if (!raw) return '';
+    const ts = Date.parse(raw);
+    if (Number.isNaN(ts)) return raw;
+    const d = new Date(ts);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 function loadCertStatus() {
     api('/api/ssl/status', { method: 'GET' }).then(data => {
         data.certificates.forEach(cert => {
@@ -187,7 +200,7 @@ function loadCertStatus() {
                 `.cert-expiry[data-domain="${cert.domain}"]`);
             if (cell) {
                 if (cert.https_enabled && cert.expiry) {
-                    cell.textContent = cert.expiry;
+                    cell.textContent = formatCertExpiry(cert.expiry);
                 } else if (cert.https_enabled) {
                     cell.textContent = '已启用';
                 } else {
@@ -303,6 +316,7 @@ function changePassword() {
 // Init
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
+    loadCertStatus();
 
     // Apply gradient CSS variables to color preview elements
     document.querySelectorAll('.color-preview.gradient-bg')
