@@ -211,10 +211,10 @@ td:nth-child(2) code { font-size: 0.85rem; }
 
     /* 域名表格切换为卡片视图：每张卡片至少展示
      * 1) 完整域名 2) HTTPS 开关 3) 证书状态徽章 4) "编辑" 5) "删除" 共 5 项 */
-    table { display: block; width: 100%; table-layout: auto; }
-    table thead { display: none; }
-    table tbody { display: block; }
-    table tr {
+    #tab-domains table { display: block; width: 100%; table-layout: auto; }
+    #tab-domains table thead { display: none; }
+    #tab-domains table tbody { display: block; }
+    #tab-domains table tr {
         display: grid;
         grid-template-columns: 1fr auto;
         align-items: center;
@@ -226,7 +226,7 @@ td:nth-child(2) code { font-size: 0.85rem; }
         background: var(--rg-color-bg-surface);
         box-shadow: var(--rg-shadow-sm);
     }
-    table td {
+    #tab-domains table td {
         display: block;
         padding: 0;
         border-bottom: none;
@@ -236,32 +236,80 @@ td:nth-child(2) code { font-size: 0.85rem; }
         font-size: var(--rg-font-size-base);
     }
     /* 在卡片视图中隐藏：匹配关键字（2）/ 色彩预览（3）/ 到期时间（6） */
-    table td:nth-child(2),
-    table td:nth-child(3),
-    table td:nth-child(6) { display: none; }
+    #tab-domains table td:nth-child(2),
+    #tab-domains table td:nth-child(3),
+    #tab-domains table td:nth-child(6) { display: none; }
     /* 域名独占首行 */
-    table td:nth-child(1) {
+    #tab-domains table td:nth-child(1) {
         grid-column: 1 / -1;
         font-size: var(--rg-font-size-lg);
         word-break: break-all;
     }
     /* HTTPS 开关左列 */
-    table td:nth-child(4) {
+    #tab-domains table td:nth-child(4) {
         grid-column: 1 / 2;
         justify-self: start;
     }
     /* 证书徽章右列 */
-    table td:nth-child(5) {
+    #tab-domains table td:nth-child(5) {
         grid-column: 2 / 3;
         justify-self: end;
     }
     /* 操作按钮独占一行，等分宽度 */
-    table td.actions {
+    #tab-domains table td.actions {
         grid-column: 1 / -1;
         display: flex;
         gap: var(--rg-space-sm);
     }
-    table td.actions .btn { flex: 1; }
+    #tab-domains table td.actions .btn { flex: 1; }
+
+    /* DNS 检测结果切换为卡片视图：保留完整 4 列（域名 / A 记录值 / 状态 / TTL），
+     * 表头隐藏后通过 ::before 在每一格前注入字段标签，避免移动端视口下因
+     * table-layout: fixed 的列宽 (220+100+50+55=425px) 超出 ≤480px 而被裁切。 */
+    #tab-dns table { display: block; width: 100%; table-layout: auto; }
+    #tab-dns table thead { display: none; }
+    #tab-dns table tbody { display: block; }
+    #tab-dns table tr {
+        display: block;
+        padding: var(--rg-space-md);
+        margin-bottom: var(--rg-space-md);
+        border: 1px solid var(--rg-color-border-default);
+        border-radius: var(--rg-radius-md);
+        background: var(--rg-color-bg-surface);
+        box-shadow: var(--rg-shadow-sm);
+    }
+    #tab-dns table td {
+        display: block;
+        padding: var(--rg-space-xs) 0;
+        border-bottom: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-all;
+        font-size: var(--rg-font-size-base);
+    }
+    #tab-dns table td:nth-child(1) {
+        font-size: var(--rg-font-size-lg);
+        font-weight: 600;
+        margin-bottom: var(--rg-space-xs);
+        padding-bottom: var(--rg-space-xs);
+        border-bottom: 1px solid var(--rg-color-border-muted);
+    }
+    #tab-dns table td:nth-child(2)::before {
+        content: "A 记录: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    #tab-dns table td:nth-child(3)::before {
+        content: "状态: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    #tab-dns table td:nth-child(4)::before {
+        content: "TTL: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
 }
 
 /* ============================================================
