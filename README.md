@@ -294,6 +294,17 @@ IP 白名单支持两级配置，登录前拦截：
 - **键盘焦点**：所有可聚焦元素提供 ≥2px `:focus-visible` 指示器（`outline` 或 `box-shadow`），与相邻像素对比度 ≥3:1。Tab 顺序与视觉顺序一致，禁用 / 隐藏元素不进入 Tab 链。
 - **减弱动效**：`@media (prefers-reduced-motion: reduce)` 将所有元素及伪元素的 `transition-duration` / `animation-duration` 收敛至 ≤0.01s，`animation-iteration-count: 1`；建设中页 `.notice-banner` 关停 pulse 动画并消除 `transform`。
 
+### 样式表加载顺序
+
+四类页面都必须在 `<head>` 中先于其他样式表 / 内联 `<style>` 引入 `tokens.css`，否则 `var(--rg-*)` 引用会全部失效（页面将完全失去样式）：
+
+| 页面 | 加载方式 |
+| --- | --- |
+| 管理面板 (`index.html`) | `<link rel="stylesheet" href="/static/css/tokens.css">` 在 `admin.css` 之前 |
+| 登录页 (`login.html`) | `<link rel="stylesheet" href="/static/css/tokens.css">` 在内嵌 `<style>` 之前 |
+| 403 页 (`403.html`) | `<link rel="stylesheet" href="/static/css/tokens.css">` 在内嵌 `<style>` 之前 |
+| 建设中页 (`generate_html`) | `tokens.css` 全文内联到输出 HTML 的 `<style>` 块顶部 |
+
 ### FOUC 抑制
 
 四类页面 `<head>` 末尾内联同步脚本，在首次绘制前完成 `data-theme` 解析：
