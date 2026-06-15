@@ -41,11 +41,11 @@ EOF
 
 # patch 递增，进位到 minor / major
 patch=$((patch + 1))
-if [ "$patch" -ge 100 ]; then
+if [ "$patch" -ge 10 ]; then
     patch=0
     minor=$((minor + 1))
 fi
-if [ "$minor" -ge 100 ]; then
+if [ "$minor" -ge 10 ]; then
     minor=0
     major=$((major + 1))
 fi
