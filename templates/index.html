@@ -4,7 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RegisGuard - 域名管理面板</title>
+    <link rel="stylesheet" href="/static/css/tokens.css">
     <link rel="stylesheet" href="/static/css/admin.css">
+    <script>
+    (function () {
+        var STORAGE_KEY = 'regisguard-theme';
+        var mode = 'system';
+        try {
+            var stored = window.localStorage.getItem(STORAGE_KEY);
+            if (stored === 'light' || stored === 'dark' || stored === 'system') {
+                mode = stored;
+            }
+        } catch (e) { /* 隐私模式或存储被禁用：保持 mode = 'system' */ }
+
+        var resolved = 'light';
+        if (mode === 'dark') {
+            resolved = 'dark';
+        } else if (mode === 'light') {
+            resolved = 'light';
+        } else {
+            // system
+            try {
+                var mql = window.matchMedia('(prefers-color-scheme: dark)');
+                if (mql && mql.matches) resolved = 'dark';
+            } catch (e) { /* matchMedia 不可用：保持 light */ }
+        }
+        document.documentElement.setAttribute('data-theme', resolved);
+    })();
+    </script>
 </head>
 <body>
     <div class="container">
@@ -12,6 +39,11 @@
         <header>
             <h1>RegisGuard 域名管理面板</h1>
             <div class="header-actions">
+                <div class="theme-switcher" role="group" aria-label="主题模式">
+                    <button type="button" class="theme-btn" data-theme-mode="light" aria-pressed="false" aria-label="浅色主题">☀️</button>
+                    <button type="button" class="theme-btn" data-theme-mode="dark" aria-pressed="false" aria-label="深色主题">🌙</button>
+                    <button type="button" class="theme-btn" data-theme-mode="system" aria-pressed="true" aria-label="跟随系统">🖥️</button>
+                </div>
                 <a href="/logout" class="btn btn-secondary">退出登录</a>
             </div>
         </header>
@@ -141,5 +173,20 @@
     </div>
 
     <script src="/static/js/admin.js"></script>
+    <script src="/static/js/theme.js" defer></script>
+    <script>
+    (function () {
+        function initTheme() {
+            if (window.RGTheme && typeof window.RGTheme.init === 'function') {
+                window.RGTheme.init();
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTheme, { once: true });
+        } else {
+            initTheme();
+        }
+    })();
+    </script>
 </body>
 </html>

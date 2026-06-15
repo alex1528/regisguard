@@ -4,18 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RegisGuard - 登录</title>
+    <link rel="stylesheet" href="/static/css/tokens.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
-        body { background: radial-gradient(circle at top right, #0a1128, #020617); color: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 3rem 2.5rem; width: 360px; text-align: center; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-        .login-box h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-        .login-box p { color: #64748b; font-size: 0.85rem; margin-bottom: 2rem; }
-        .login-box input { width: 100%; padding: 10px 14px; border: 1px solid #334155; border-radius: 8px; background: rgba(255,255,255,0.05); color: #f1f5f9; font-size: 0.95rem; outline: none; margin-bottom: 1rem; }
-        .login-box input:focus { border-color: #3b82f6; }
-        .login-box button { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #3b82f6; color: #fff; font-size: 0.95rem; font-weight: bold; cursor: pointer; }
-        .login-box button:hover { background: #2563eb; }
-        .error-msg { color: #f87171; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--rg-font-family); }
+        body { background: var(--rg-color-bg-default); color: var(--rg-color-fg-default); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: var(--rg-color-bg-surface); border: 1px solid var(--rg-color-border-default); border-radius: 16px; padding: 3rem 2.5rem; width: 360px; text-align: center; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .login-box h1 { font-size: var(--rg-font-size-xl); margin-bottom: 0.5rem; }
+        .login-box p { color: var(--rg-color-fg-muted); font-size: 0.85rem; margin-bottom: 2rem; }
+        .login-box input { width: 100%; padding: 10px 14px; border: 1px solid var(--rg-color-border-default); border-radius: var(--rg-radius-md); background: var(--rg-color-bg-muted); color: var(--rg-color-fg-default); font-size: var(--rg-font-size-base); outline: none; margin-bottom: 1rem; }
+        .login-box input:focus { border-color: var(--rg-color-accent); }
+        .login-box button { width: 100%; padding: 10px; border: none; border-radius: var(--rg-radius-md); background: var(--rg-color-accent); color: var(--rg-color-on-accent); font-size: var(--rg-font-size-base); font-weight: bold; cursor: pointer; }
+        .login-box button:hover { background: var(--rg-color-accent-hover); }
+        .error-msg { color: var(--rg-color-danger); font-size: var(--rg-font-size-sm); margin-bottom: 0.5rem; }
+
+        /* :focus-visible 焦点可见指示器（R12.2、R12.3、R12.4）。
+           .login-box input 使用 outline:none 隐藏默认 outline，
+           因此在键盘聚焦下补充 ≥2px outline，与背景对比度 ≥3:1 */
+        .login-box input:focus-visible,
+        .login-box button:focus-visible {
+            outline: 2px solid var(--rg-color-focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Desktop_Breakpoint (≥769px)：360px 固定宽度，水平 + 垂直居中由 body flex 提供 */
+        @media (min-width: 769px) {
+            .login-box { width: 360px; }
+        }
+
+        /* Tablet_Breakpoint (481–768px)：登录卡片宽度 88%（位于 88%–92% 区间内），
+           左右边距由 body flex 居中得到，单侧 6%×viewport ≥ 16px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .login-box {
+                width: 88%;
+                padding: var(--rg-space-lg) var(--rg-space-md);
+            }
+        }
+
+        /* Mobile_Breakpoint (≤480px)：88% 宽度（88%–92% 区间内），
+           单侧 6%×viewport @ 320px = 19.2px ≥ 16px；
+           按钮、密码输入框高度 ∈ [44, 56]px */
+        @media (max-width: 480px) {
+            .login-box {
+                width: 88%;
+                padding: var(--rg-space-lg) var(--rg-space-md);
+            }
+            .login-box input,
+            .login-box button {
+                min-height: 48px;
+                padding: 12px 14px;
+            }
+        }
+
+        /* Reduced-motion preference (Property 21, R13.2–R13.4)：
+           !important 仅用于动效时长，覆盖潜在第三方样式；不用于颜色 */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                transition-duration: 0.01s !important;
+                animation-duration: 0.01s !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
     </style>
+    <script>
+    (function () {
+        var resolved = 'light';
+        try {
+            var mql = window.matchMedia('(prefers-color-scheme: dark)');
+            if (mql && mql.matches) resolved = 'dark';
+        } catch (e) { /* 不可用：保持 light */ }
+        document.documentElement.setAttribute('data-theme', resolved);
+    })();
+    </script>
 </head>
 <body>
     <div class="login-box">

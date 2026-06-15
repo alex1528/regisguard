@@ -1,43 +1,51 @@
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
-body { background: #f0f2f5; color: #333; padding: 2rem 1rem; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--rg-font-family); }
+body { background: var(--rg-color-bg-default); color: var(--rg-color-fg-default); padding: 2rem var(--rg-space-md); }
 .container { max-width: 1400px; margin: 0 auto; }
 
-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-header h1 { font-size: 1.5rem; color: #1f1f1f; }
-.header-actions { display: flex; gap: 8px; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: var(--rg-color-bg-surface); padding: var(--rg-space-lg); border-radius: var(--rg-radius-lg); box-shadow: var(--rg-shadow-lg); }
+header h1 { font-size: var(--rg-font-size-xl); color: var(--rg-color-fg-default); }
+.header-actions { display: flex; gap: var(--rg-space-sm); }
+
+/* Theme_Switcher（主题切换器；选中态由 [aria-pressed="true"] 驱动，不引入额外类名） */
+.theme-switcher { display: inline-flex; align-items: center; gap: var(--rg-space-xs); padding: var(--rg-space-xs); background: var(--rg-color-bg-muted); border: 1px solid var(--rg-color-border-default); border-radius: var(--rg-radius-md); }
+.theme-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 32px; padding: 0 var(--rg-space-sm); border: none; border-radius: var(--rg-radius-sm); cursor: pointer; font-size: var(--rg-font-size-base); line-height: 1; background: transparent; color: var(--rg-color-fg-default); transition: background var(--rg-duration-fast), color var(--rg-duration-fast); }
+.theme-btn:hover { background: var(--rg-color-border-muted); }
+.theme-btn:focus-visible { outline: 2px solid var(--rg-color-focus-ring); outline-offset: 2px; }
+.theme-btn[aria-pressed="true"] { background: var(--rg-color-accent); color: var(--rg-color-on-accent); }
+.theme-btn[aria-pressed="true"]:hover { background: var(--rg-color-accent-hover); }
 
 /* Tabs */
-.tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; }
-.tab-btn { padding: 10px 24px; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; background: #e8e8e8; color: #666; transition: background 0.2s, color 0.2s; }
-.tab-btn:hover { background: #d9d9d9; }
-.tab-btn.active { background: #fff; color: #1890ff; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
+.tabs { display: flex; gap: var(--rg-space-xs); margin-bottom: var(--rg-space-lg); }
+.tab-btn { padding: 10px var(--rg-space-lg); border: none; border-radius: var(--rg-radius-md) var(--rg-radius-md) 0 0; cursor: pointer; font-weight: bold; font-size: 0.9rem; background: var(--rg-color-bg-muted); color: var(--rg-color-fg-muted); transition: background var(--rg-duration-fast), color var(--rg-duration-fast); }
+.tab-btn:hover { background: var(--rg-color-border-default); }
+.tab-btn.active { background: var(--rg-color-bg-surface); color: var(--rg-color-accent); box-shadow: var(--rg-shadow-sm); }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
-.btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9rem; transition: background 0.2s; text-decoration: none; display: inline-block; }
-.btn-primary { background: #1890ff; color: #fff; }
-.btn-primary:hover { background: #40a9ff; }
-.btn-danger { background: #ff4d4f; color: #fff; }
-.btn-danger:hover { background: #ff7875; }
-.btn-info { background: #13c2c2; color: #fff; }
-.btn-info:hover { background: #36cfc9; }
-.btn-secondary { background: #8c8c8c; color: #fff; }
-.btn-secondary:hover { background: #a6a6a6; }
-.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+.btn { padding: 10px var(--rg-space-md); border: none; border-radius: var(--rg-radius-md); cursor: pointer; font-weight: bold; font-size: 0.9rem; transition: background var(--rg-duration-fast); text-decoration: none; display: inline-block; }
+.btn-primary { background: var(--rg-color-accent); color: var(--rg-color-on-accent); }
+.btn-primary:hover { background: var(--rg-color-accent-hover); }
+.btn-danger { background: var(--rg-color-danger); color: var(--rg-color-on-accent); }
+.btn-danger:hover { background: var(--rg-color-danger-hover); }
+.btn-info { background: var(--rg-color-info); color: var(--rg-color-on-accent); }
+.btn-info:hover { background: var(--rg-color-info-hover); }
+.btn-secondary { background: var(--rg-color-fg-muted); color: var(--rg-color-on-accent); }
+.btn-secondary:hover { background: var(--rg-color-fg-default); }
+.btn-sm { padding: var(--rg-space-xs) 10px; font-size: var(--rg-font-size-sm); }
 
-.main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; }
-.card { background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-.card h2 { font-size: 1.1rem; margin-bottom: 1.2rem; padding-bottom: 0.5rem; border-bottom: 1px solid #f0f0f0; }
+.main-layout { display: grid; grid-template-columns: 320px 1fr; gap: var(--rg-space-lg); }
+.card { background: var(--rg-color-bg-surface); padding: var(--rg-space-lg); border-radius: var(--rg-radius-lg); box-shadow: var(--rg-shadow-lg); }
+.card h2 { font-size: var(--rg-font-size-lg); margin-bottom: 1.2rem; padding-bottom: var(--rg-space-sm); border-bottom: 1px solid var(--rg-color-border-muted); }
 
 .form-group { margin-bottom: 1.2rem; }
-.form-group label { display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: #666; }
-.form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px; outline: none; }
-.form-group input:focus, .form-group select:focus { border-color: #40a9ff; }
+.form-group label { display: block; margin-bottom: var(--rg-space-sm); font-size: 0.85rem; color: var(--rg-color-fg-muted); }
+.form-group input, .form-group select { width: 100%; padding: var(--rg-space-sm) 12px; border: 1px solid var(--rg-color-border-default); border-radius: var(--rg-radius-md); outline: none; }
+.form-group input:focus, .form-group select:focus { border-color: var(--rg-color-accent-hover); }
 
 /* Domain table */
 table { width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed; }
-th, td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-th { background: #fafafa; color: #555; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--rg-color-border-muted); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+th { background: var(--rg-color-bg-muted); color: var(--rg-color-fg-muted); }
 th:nth-child(1) { width: 220px; }
 th:nth-child(2) { width: 100px; }
 th:nth-child(3) { width: 160px; }
@@ -48,44 +56,315 @@ th:nth-child(7) { width: 140px; }
 th:nth-child(8) { width: 120px; }
 td:nth-child(1) { font-weight: 600; }
 td:nth-child(2) code { font-size: 0.85rem; }
-.color-preview { display: inline-block; width: 24px; height: 16px; border-radius: 4px; }
-.badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; white-space: nowrap; }
-.badge-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-.badge-warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
-.actions { display: flex; gap: 4px; white-space: nowrap; }
-.actions .btn { padding: 4px 8px; font-size: 0.78rem; border-radius: 4px; }
+.color-preview { display: inline-block; width: var(--rg-space-lg); height: var(--rg-space-md); border-radius: var(--rg-radius-sm); }
+.badge { padding: 2px var(--rg-space-sm); border-radius: 10px; font-size: 0.75rem; font-weight: bold; white-space: nowrap; }
+.badge-success { background: var(--rg-color-success-bg); color: var(--rg-color-success); border: 1px solid var(--rg-color-success-border); }
+.badge-warning { background: var(--rg-color-warning-bg); color: var(--rg-color-warning); border: 1px solid var(--rg-color-warning-border); }
+.actions { display: flex; gap: var(--rg-space-xs); white-space: nowrap; }
+.actions .btn { padding: var(--rg-space-xs) var(--rg-space-sm); font-size: 0.78rem; border-radius: var(--rg-radius-sm); }
 
-.tab-actions { display: flex; gap: 12px; margin-top: 1.5rem; }
+.tab-actions { display: flex; gap: 12px; margin-top: var(--rg-space-lg); }
 
 /* Settings card */
-.settings-row { display: flex; flex-direction: column; gap: 1rem; }
-.setting-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.settings-row { display: flex; flex-direction: column; gap: var(--rg-space-md); }
+.setting-item { display: flex; align-items: center; gap: 12px; padding: var(--rg-space-sm) 0; border-bottom: 1px solid var(--rg-color-border-muted); }
 .setting-item:last-child { border-bottom: none; }
-.setting-text strong { display: block; font-size: 0.9rem; color: #1f1f1f; }
-.setting-text p { font-size: 0.8rem; color: #8c8c8c; margin-top: 2px; }
-.setting-item input[type="text"] { flex: 1; padding: 6px 10px; border: 1px solid #d9d9d9; border-radius: 6px; outline: none; }
-.setting-item input[type="text"]:focus { border-color: #40a9ff; }
+.setting-text strong { display: block; font-size: 0.9rem; color: var(--rg-color-fg-default); }
+.setting-text p { font-size: var(--rg-font-size-sm); color: var(--rg-color-fg-muted); margin-top: 2px; }
+.setting-item input[type="text"] { flex: 1; padding: 6px 10px; border: 1px solid var(--rg-color-border-default); border-radius: var(--rg-radius-md); outline: none; }
+.setting-item input[type="text"]:focus { border-color: var(--rg-color-accent-hover); }
 
 /* Toggle switch */
-.toggle-label { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-label { position: relative; display: inline-block; width: 44px; height: var(--rg-space-lg); flex-shrink: 0; }
 .toggle-label input { opacity: 0; width: 0; height: 0; }
-.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ccc; border-radius: 24px; transition: 0.3s; }
-.toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
-.toggle-label input:checked + .toggle-slider { background: #52c41a; }
+.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--rg-color-border-default); border-radius: 24px; transition: var(--rg-duration-base); }
+.toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: var(--rg-color-bg-surface); border-radius: 50%; transition: var(--rg-duration-base); }
+.toggle-label input:checked + .toggle-slider { background: var(--rg-color-success); }
 .toggle-label input:checked + .toggle-slider:before { transform: translateX(20px); }
 
-.timestamp { font-size: 0.8rem; color: #999; font-weight: normal; margin-left: 12px; }
+.timestamp { font-size: var(--rg-font-size-sm); color: var(--rg-color-fg-muted); font-weight: normal; margin-left: 12px; }
 
-.console-log { margin-top: 2rem; background: #001529; color: #a6adb4; padding: 1.5rem; border-radius: 12px; font-family: "Courier New", Courier, monospace; min-height: 120px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem; }
+.console-log { margin-top: 2rem; background: var(--rg-color-console-bg); color: var(--rg-color-console-fg); padding: var(--rg-space-lg); border-radius: var(--rg-radius-lg); font-family: "Courier New", Courier, monospace; min-height: 120px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem; }
+
+/* ============================================================
+ * :focus-visible 焦点可见指示器（R12.2、R12.3、R12.4）
+ *
+ * 所有可聚焦元素在键盘聚焦（:focus-visible）时呈现 ≥2px 的轮廓，
+ * 使用 --rg-color-focus-ring 与相邻像素保持 ≥3:1 对比度。
+ *
+ * 凡使用 outline: none 移除默认指示器的选择器（.form-group input/select、
+ * .setting-item input[type="text"]）均在此处补充 :focus-visible 替代
+ * 指示，满足 R12.3 "outline:none 必须配合 :focus-visible 提供等效指示" 的约束。
+ *
+ * .theme-btn:focus-visible 已在上方主题切换器规则中声明，此处不重复。
+ * ============================================================ */
+.tab-btn:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--rg-color-focus-ring);
+    outline-offset: 2px;
+}
+
+.form-group input:focus-visible,
+.form-group select:focus-visible,
+.setting-item input[type="text"]:focus-visible {
+    outline: 2px solid var(--rg-color-focus-ring);
+    outline-offset: 1px;
+    border-color: var(--rg-color-accent-hover);
+}
+
+/* Toggle 开关的可聚焦元素是被视觉隐藏的 <input>（opacity:0、宽高 0），
+ * 因此把焦点环画在相邻的 .toggle-slider 上以保证可见性 */
+.toggle-label input:focus-visible + .toggle-slider {
+    outline: 2px solid var(--rg-color-focus-ring);
+    outline-offset: 2px;
+}
 
 /* Utility classes */
 .btn-full { width: 100%; }
 .btn-hidden { display: none; }
-.color-preview.gradient-bg { background: var(--item-gradient, #ccc); }
+.color-preview.gradient-bg { background: var(--item-gradient, var(--rg-color-border-default)); }
 
-@media (max-width: 768px) {
+/* ============================================================
+ * 响应式断点：Desktop ≥769px / Tablet 481–768px / Mobile ≤480px
+ * 视口跨断点变化时由 CSS 媒体查询驱动重排，无 JS 介入。
+ * ============================================================ */
+
+/* Desktop (≥769px)：左 320px 编辑卡片 + 右侧填满表格的双列布局 */
+@media (min-width: 769px) {
+    .main-layout { grid-template-columns: 320px 1fr; }
+}
+
+/* Tablet (481–768px)：单列纵向堆叠，编辑卡片置于表格之上；
+ * 标签页溢出时横向滚动且不引发 <body> 水平滚动 */
+@media (min-width: 481px) and (max-width: 768px) {
+    body { overflow-x: hidden; }
+
     .main-layout { grid-template-columns: 1fr; }
     .tab-actions { flex-direction: column; }
     .tab-actions .btn { width: 100%; }
-    .tabs { flex-wrap: wrap; }
+
+    .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .tab-btn { flex: 0 0 auto; }
+}
+
+/* Mobile (≤480px)：单列堆叠 + 域名表格切换为卡片视图；
+ * 所有点击目标宽高 ≥40px；标签页可横向滚动 */
+@media (max-width: 480px) {
+    body {
+        padding: var(--rg-space-md) var(--rg-space-sm);
+        overflow-x: hidden;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--rg-space-md);
+        padding: var(--rg-space-md);
+    }
+    .header-actions { justify-content: flex-end; flex-wrap: wrap; }
+
+    .main-layout { grid-template-columns: 1fr; }
+    .tab-actions { flex-direction: column; }
+    .tab-actions .btn { width: 100%; }
+
+    /* 标签页溢出时横向滚动（不影响 <body>） */
+    .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .tab-btn {
+        flex: 0 0 auto;
+        min-height: 40px;
+    }
+
+    /* 点击目标 ≥40px：按钮、Toggle、表单输入 */
+    .btn,
+    .btn-sm,
+    .theme-btn {
+        min-height: 40px;
+        min-width: 40px;
+    }
+    .btn-sm { padding: var(--rg-space-sm) var(--rg-space-md); font-size: var(--rg-font-size-sm); }
+    .actions .btn { min-height: 40px; min-width: 40px; padding: var(--rg-space-sm) var(--rg-space-md); font-size: var(--rg-font-size-sm); }
+
+    .form-group input,
+    .form-group select,
+    .setting-item input[type="text"] {
+        min-height: 40px;
+    }
+
+    /* Toggle：保留 44x24 视觉滑块，扩展可点击区域至 44x40 */
+    .toggle-label {
+        width: 44px;
+        height: 40px;
+    }
+    .toggle-slider {
+        top: 50%;
+        bottom: auto;
+        height: 24px;
+        transform: translateY(-50%);
+    }
+
+    /* 域名表格切换为卡片视图：保留 7 列全部信息——
+     *   1) 完整域名 2) 匹配关键字 3) 色彩 4) HTTPS 开关
+     *   5) 证书徽章 6) 到期时间 7) 操作
+     * 移动端通过 ::before 注入字段标签，避免桌面端 table-layout: fixed
+     * 列宽（220+100+50+55+70+140+120=755px）超出 ≤480px 视口的问题。 */
+    #tab-domains table { display: block; width: 100%; table-layout: auto; }
+    #tab-domains table thead { display: none; }
+    #tab-domains table tbody { display: block; }
+    #tab-domains table tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: var(--rg-space-sm) var(--rg-space-md);
+        padding: var(--rg-space-md);
+        margin-bottom: var(--rg-space-md);
+        border: 1px solid var(--rg-color-border-default);
+        border-radius: var(--rg-radius-md);
+        background: var(--rg-color-bg-surface);
+        box-shadow: var(--rg-shadow-sm);
+    }
+    #tab-domains table td {
+        display: block;
+        padding: 0;
+        border-bottom: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-all;
+        font-size: var(--rg-font-size-base);
+    }
+    /* 域名独占首行 */
+    #tab-domains table td:nth-child(1) {
+        grid-column: 1 / -1;
+        font-size: var(--rg-font-size-lg);
+        padding-bottom: var(--rg-space-xs);
+        border-bottom: 1px solid var(--rg-color-border-muted);
+    }
+    /* 匹配关键字：整行 + ::before 注入字段标签 */
+    #tab-domains table td:nth-child(2) {
+        grid-column: 1 / -1;
+        color: var(--rg-color-fg-default);
+    }
+    #tab-domains table td:nth-child(2)::before {
+        content: "关键字: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    /* 色彩预览：整行 + ::before 注入字段标签，色块与标签同行 */
+    #tab-domains table td:nth-child(3) {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        gap: var(--rg-space-sm);
+    }
+    #tab-domains table td:nth-child(3)::before {
+        content: "色彩: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    /* HTTPS 开关左列 */
+    #tab-domains table td:nth-child(4) {
+        grid-column: 1 / 2;
+        justify-self: start;
+    }
+    /* 证书徽章右列 */
+    #tab-domains table td:nth-child(5) {
+        grid-column: 2 / 3;
+        justify-self: end;
+    }
+    /* 到期时间：整行 + ::before 注入字段标签 */
+    #tab-domains table td:nth-child(6) {
+        grid-column: 1 / -1;
+        color: var(--rg-color-fg-default);
+    }
+    #tab-domains table td:nth-child(6)::before {
+        content: "到期: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    /* 操作按钮独占一行，等分宽度 */
+    #tab-domains table td.actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: var(--rg-space-sm);
+    }
+    #tab-domains table td.actions .btn { flex: 1; }
+
+    /* DNS 检测结果切换为卡片视图：保留完整 4 列（域名 / A 记录值 / 状态 / TTL），
+     * 表头隐藏后通过 ::before 在每一格前注入字段标签，避免移动端视口下因
+     * table-layout: fixed 的列宽 (220+100+50+55=425px) 超出 ≤480px 而被裁切。 */
+    #tab-dns table { display: block; width: 100%; table-layout: auto; }
+    #tab-dns table thead { display: none; }
+    #tab-dns table tbody { display: block; }
+    #tab-dns table tr {
+        display: block;
+        padding: var(--rg-space-md);
+        margin-bottom: var(--rg-space-md);
+        border: 1px solid var(--rg-color-border-default);
+        border-radius: var(--rg-radius-md);
+        background: var(--rg-color-bg-surface);
+        box-shadow: var(--rg-shadow-sm);
+    }
+    #tab-dns table td {
+        display: block;
+        padding: var(--rg-space-xs) 0;
+        border-bottom: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-all;
+        font-size: var(--rg-font-size-base);
+    }
+    #tab-dns table td:nth-child(1) {
+        font-size: var(--rg-font-size-lg);
+        font-weight: 600;
+        margin-bottom: var(--rg-space-xs);
+        padding-bottom: var(--rg-space-xs);
+        border-bottom: 1px solid var(--rg-color-border-muted);
+    }
+    #tab-dns table td:nth-child(2)::before {
+        content: "A 记录: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    #tab-dns table td:nth-child(3)::before {
+        content: "状态: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+    #tab-dns table td:nth-child(4)::before {
+        content: "TTL: ";
+        color: var(--rg-color-fg-muted);
+        font-weight: 600;
+    }
+}
+
+/* ============================================================
+ * Reduced-motion preference (Property 21, R13.1–R13.4)
+ *
+ * 当系统启用 "减弱动效" 偏好时，将所有元素及 ::before / ::after
+ * 伪元素的 transition-duration 与 animation-duration 压至 ≤0.01s，
+ * 并将 animation-iteration-count 设为 1，消除跳动 / 缩放等周期变化。
+ *
+ * 完全使用媒体查询实现，不依赖 JavaScript 检测。
+ *
+ * !important 仅用于 transition-duration / animation-duration /
+ * animation-iteration-count 三个动效时长属性，目的是覆盖第三方或
+ * 内联样式可能注入的更长时长；不用于颜色覆盖（不违反 R11.5）。
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01s !important;
+        animation-duration: 0.01s !important;
+        animation-iteration-count: 1 !important;
+    }
 }

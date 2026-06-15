@@ -4,13 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>403 - 禁止访问</title>
+    <link rel="stylesheet" href="/static/css/tokens.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
-        body { background: radial-gradient(circle at top right, #0a1128, #020617); color: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .box { text-align: center; padding: 3rem; }
-        .box h1 { font-size: 4rem; color: #f87171; }
-        .box p { color: #94a3b8; margin-top: 1rem; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--rg-font-family); }
+        body { background: var(--rg-color-bg-default); color: var(--rg-color-fg-default); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .box { text-align: center; padding: 3rem; max-width: 100%; }
+        .box h1 { font-size: 4rem; color: var(--rg-color-danger); }
+        .box p { color: var(--rg-color-fg-muted); margin-top: var(--rg-space-md); }
+        @media (max-width: 480px) {
+            .box { padding: var(--rg-space-lg) var(--rg-space-md); }
+            .box h1 { font-size: 2.5rem; }
+        }
+
+        /* :focus-visible 焦点可见指示器（R12.2、R12.3、R12.4）。
+           本页面无交互元素，但保留通用规则与其余 CSS 源保持一致。 */
+        :focus-visible {
+            outline: 2px solid var(--rg-color-focus-ring);
+            outline-offset: 2px;
+        }
+
+        /* Reduced-motion preference (Property 21, R13.2–R13.4)：
+           !important 仅用于动效时长，覆盖潜在第三方样式；不用于颜色 */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                transition-duration: 0.01s !important;
+                animation-duration: 0.01s !important;
+                animation-iteration-count: 1 !important;
+            }
+        }
     </style>
+    <script>
+    (function () {
+        var resolved = 'light';
+        try {
+            var mql = window.matchMedia('(prefers-color-scheme: dark)');
+            if (mql && mql.matches) resolved = 'dark';
+        } catch (e) { /* 不可用：保持 light */ }
+        document.documentElement.setAttribute('data-theme', resolved);
+    })();
+    </script>
 </head>
 <body>
     <div class="box">
