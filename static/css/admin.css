@@ -40,11 +40,12 @@ th, td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem
 th { background: #fafafa; color: #555; }
 th:nth-child(1) { width: 220px; }
 th:nth-child(2) { width: 100px; }
-th:nth-child(3) { width: 50px; }
-th:nth-child(4) { width: 55px; }
-th:nth-child(5) { width: 70px; }
-th:nth-child(6) { width: 140px; }
-th:nth-child(7) { width: 120px; }
+th:nth-child(3) { width: 160px; }
+th:nth-child(4) { width: 50px; }
+th:nth-child(5) { width: 55px; }
+th:nth-child(6) { width: 70px; }
+th:nth-child(7) { width: 140px; }
+th:nth-child(8) { width: 120px; }
 td:nth-child(1) { font-weight: 600; }
 td:nth-child(2) code { font-size: 0.85rem; }
 .color-preview { display: inline-block; width: 24px; height: 16px; border-radius: 4px; }

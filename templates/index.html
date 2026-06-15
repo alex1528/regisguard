@@ -56,6 +56,10 @@
                             <label for="keyword">匹配关键字 (用于前端识别)</label>
                             <input type="text" id="keyword" name="keyword" placeholder="example" required>
                         </div>
+                        <div class="form-group">
+                            <label for="icp-number">目标域名备案号</label>
+                            <input type="text" id="icp-number" name="icp_number" placeholder="京ICP备12345678号">
+                        </div>
                         <button type="submit" class="btn btn-primary btn-full">保存到列表</button>
                         <button type="button" class="btn btn-secondary btn-full btn-hidden" id="cancel-edit">取消编辑</button>
                     </form>
@@ -68,6 +72,7 @@
                             <tr>
                                 <th>完整域名</th>
                                 <th>匹配关键字</th>
+                                <th>备案号</th>
                                 <th>色彩</th>
                                 <th>HTTPS</th>
                                 <th>证书</th>
@@ -80,6 +85,7 @@
                             <tr data-index="{{ loop.index0 }}">
                                 <td><strong>{{ item.domain }}</strong></td>
                                 <td><code>{{ item.keyword }}</code></td>
+                                <td>{{ item.icp_number or '-' }}</td>
                                 <td>
                                     <span class="color-preview gradient-bg" data-gradient="{{ item.gradient }}"></span>
                                 </td>

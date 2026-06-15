@@ -460,13 +460,14 @@ def index():
 def add_domain_route():
     domain = request.json.get("domain", "").strip().lower()
     keyword = request.json.get("keyword", "").strip().lower()
+    icp_number = request.json.get("icp_number", "").strip()
     gradient = request.json.get("gradient", "")
 
     if not domain or not keyword:
         return jsonify({"status": "error",
                         "message": "Domain and keyword are required"}), 400
 
-    success, message = add_domain(domain, keyword, gradient)
+    success, message = add_domain(domain, keyword, icp_number, gradient)
     if success:
         logger.info("Domain added: %s", domain)
     return jsonify({"status": "success" if success else "error",
@@ -482,13 +483,15 @@ def update_domain_route(index):
 
     domain = request.json.get("domain", "").strip().lower()
     keyword = request.json.get("keyword", "").strip().lower()
+    icp_number = request.json.get("icp_number", "").strip()
     gradient = request.json.get("gradient", "")
 
     if not domain or not keyword:
         return jsonify({"status": "error",
                         "message": "Domain and keyword are required"}), 400
 
-    success, message = update_domain(item["id"], domain, keyword, gradient)
+    success, message = update_domain(
+        item["id"], domain, keyword, icp_number, gradient)
     if success:
         logger.info("Domain updated: %s", domain)
     return jsonify({"status": "success" if success else "error",

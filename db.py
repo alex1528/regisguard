@@ -22,6 +22,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             domain TEXT NOT NULL UNIQUE,
             keyword TEXT NOT NULL,
+            icp_number TEXT NOT NULL DEFAULT '',
             gradient TEXT NOT NULL DEFAULT '',
             https_enabled INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -35,12 +36,26 @@ def init_db():
     """)
     conn.commit()
 
+    _ensure_domain_columns(conn)
+
     # Migrate from JSON if DB is empty and JSON exists
     count = conn.execute("SELECT COUNT(*) FROM domains").fetchone()[0]
     if count == 0 and os.path.exists(JSON_PATH):
         _migrate_from_json(conn)
 
     conn.close()
+
+
+def _ensure_domain_columns(conn):
+    """Add columns introduced after the initial SQLite schema."""
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(domains)").fetchall()
+    }
+    if "icp_number" not in columns:
+        conn.execute(
+            "ALTER TABLE domains ADD COLUMN icp_number TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
 
 
 def _migrate_from_json(conn):
@@ -50,8 +65,14 @@ def _migrate_from_json(conn):
 
     for item in data.get("domains", []):
         conn.execute(
-            "INSERT OR IGNORE INTO domains (domain, keyword, gradient, https_enabled) VALUES (?, ?, ?, ?)",
-            (item["domain"], item["keyword"], item.get("gradient", ""), int(item.get("https_enabled", False))),
+            "INSERT OR IGNORE INTO domains (domain, keyword, icp_number, gradient, https_enabled) VALUES (?, ?, ?, ?, ?)",
+            (
+                item["domain"],
+                item["keyword"],
+                item.get("icp_number", ""),
+                item.get("gradient", ""),
+                int(item.get("https_enabled", False)),
+            ),
         )
 
     settings = data.get("settings", {})
@@ -70,18 +91,18 @@ def _migrate_from_json(conn):
 def get_all_domains():
     """Return list of domain dicts."""
     conn = get_connection()
-    rows = conn.execute("SELECT id, domain, keyword, gradient, https_enabled FROM domains ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, domain, keyword, icp_number, gradient, https_enabled FROM domains ORDER BY id").fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 
-def add_domain(domain, keyword, gradient):
+def add_domain(domain, keyword, icp_number, gradient):
     """Add a new domain. Returns (success, message)."""
     conn = get_connection()
     try:
         conn.execute(
-            "INSERT INTO domains (domain, keyword, gradient, https_enabled) VALUES (?, ?, ?, 0)",
-            (domain, keyword, gradient),
+            "INSERT INTO domains (domain, keyword, icp_number, gradient, https_enabled) VALUES (?, ?, ?, ?, 0)",
+            (domain, keyword, icp_number, gradient),
         )
         conn.commit()
         return True, f"Domain {domain} added"
@@ -91,7 +112,7 @@ def add_domain(domain, keyword, gradient):
         conn.close()
 
 
-def update_domain(domain_id, domain, keyword, gradient):
+def update_domain(domain_id, domain, keyword, icp_number, gradient):
     """Update a domain by ID. Returns (success, message)."""
     conn = get_connection()
     row = conn.execute("SELECT id FROM domains WHERE id = ?", (domain_id,)).fetchone()
@@ -99,8 +120,8 @@ def update_domain(domain_id, domain, keyword, gradient):
         conn.close()
         return False, "Domain not found"
     conn.execute(
-        "UPDATE domains SET domain = ?, keyword = ?, gradient = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (domain, keyword, gradient, domain_id),
+        "UPDATE domains SET domain = ?, keyword = ?, icp_number = ?, gradient = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (domain, keyword, icp_number, gradient, domain_id),
     )
     conn.commit()
     conn.close()
@@ -124,7 +145,7 @@ def delete_domain(domain_id):
 def get_domain_by_index(index):
     """Get domain by positional index (ordered by id)."""
     conn = get_connection()
-    rows = conn.execute("SELECT id, domain, keyword, gradient, https_enabled FROM domains ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, domain, keyword, icp_number, gradient, https_enabled FROM domains ORDER BY id").fetchall()
     conn.close()
     if index < 0 or index >= len(rows):
         return None

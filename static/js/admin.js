@@ -115,6 +115,7 @@ form.addEventListener('submit', function(e) {
     const data = {
         domain: document.getElementById('domain').value,
         keyword: document.getElementById('keyword').value,
+        icp_number: document.getElementById('icp-number').value,
         gradient: idx >= 0
             ? document.querySelector(
                 `tr[data-index="${idx}"] .color-preview`
@@ -156,6 +157,9 @@ function editDomain(index) {
     const cells = row.querySelectorAll('td');
     document.getElementById('domain').value = cells[0].textContent.trim();
     document.getElementById('keyword').value = cells[1].textContent.trim();
+    document.getElementById('icp-number').value = (
+        cells[2].textContent.trim() === '-' ? '' : cells[2].textContent.trim()
+    );
     editIndexInput.value = index;
     cancelBtn.style.display = 'block';
     // Switch to domains tab
