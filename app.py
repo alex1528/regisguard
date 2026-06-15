@@ -242,9 +242,14 @@ def generate_html(domains_data):
     js_routes = ""
     for idx, item in enumerate(domains_data):
         condition = "if" if idx == 0 else "else if"
+        keyword = json.dumps(item["keyword"], ensure_ascii=False)
+        display_name = json.dumps(item["domain"].upper(), ensure_ascii=False)
+        gradient = json.dumps(item["gradient"], ensure_ascii=False)
+        icp_number = json.dumps(item.get("icp_number", "").strip(),
+                                ensure_ascii=False)
         js_routes += (
-            f"            {condition} (hostname.includes('{item['keyword']}')) {{\n"
-            f"                setTheme(\"{item['domain'].upper()}\", \"{item['gradient']}\");\n"
+            f"            {condition} (hostname.includes({keyword})) {{\n"
+            f"                setTheme({display_name}, {gradient}, {icp_number});\n"
             f"            }}\n"
         )
 
@@ -286,6 +291,10 @@ def generate_html(domains_data):
         .logo {{ font-size: 2.6rem; font-weight: 800; letter-spacing: 1px; margin-bottom: var(--rg-space-sm); line-height: 1.2; }}
         .notice-banner {{ display: inline-flex; align-items: center; gap: var(--rg-space-sm); margin-top: var(--rg-space-lg); padding: 12px 28px; background: var(--rg-color-danger); color: var(--rg-color-on-accent); font-size: var(--rg-font-size-lg); font-weight: bold; border-radius: var(--rg-radius-md); box-shadow: var(--rg-shadow-lg); animation: pulse 2s infinite ease-in-out; }}
         .footer {{ text-align: center; font-size: var(--rg-font-size-sm); color: var(--rg-color-fg-muted); margin-top: var(--rg-space-lg); width: 100%; letter-spacing: 0.5px; }}
+        .footer p + p {{ margin-top: var(--rg-space-xs); }}
+        .icp-record[hidden] {{ display: none; }}
+        .icp-link {{ color: inherit; text-decoration: none; }}
+        .icp-link:hover {{ color: var(--rg-color-accent); text-decoration: underline; }}
         @keyframes pulse {{ 0% {{ transform: scale(1); }} 50% {{ transform: scale(1.03); }} 100% {{ transform: scale(1); }} }}
         @media (max-width: 480px) {{ .logo {{ font-size: 1.8rem; }} .notice-banner {{ font-size: var(--rg-font-size-base); padding: var(--rg-space-sm) var(--rg-space-md); }} }}
         @supports not (background-clip: text) {{ .logo {{ color: var(--rg-color-fg-default); -webkit-text-fill-color: var(--rg-color-fg-default); }} }}
@@ -313,25 +322,44 @@ def generate_html(domains_data):
             <div class="notice-banner"><span>⚠️</span><span>网站正处于建设中</span></div>
         </div>
     </div>
-    <div class="footer"><p>© <span id="current-year"></span> 版权所有</p></div>
+    <div class="footer">
+        <p>© <span id="current-year"></span> 版权所有</p>
+        <p id="icp-record" class="icp-record" hidden>
+            <a id="icp-link" class="icp-link" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"></a>
+        </p>
+    </div>
     <script>
         (function() {{
             document.getElementById('current-year').innerText = new Date().getFullYear();
             const hostname = window.location.hostname.toLowerCase();
             const logoEl = document.getElementById('web-logo');
+            const icpRecordEl = document.getElementById('icp-record');
+            const icpLinkEl = document.getElementById('icp-link');
 
 {js_routes}
             else {{
                 const defaultName = window.location.host.toUpperCase() || "SYSTEM";
-                setTheme(defaultName, "linear-gradient(45deg, var(--rg-color-accent), var(--rg-color-accent-hover))");
+                setTheme(defaultName, "linear-gradient(45deg, var(--rg-color-accent), var(--rg-color-accent-hover))", "");
             }}
 
-            function setTheme(name, gradient) {{
+            function setTheme(name, gradient, icpNumber) {{
                 document.title = name + " - 网站正处于建设中";
                 logoEl.innerText = name;
                 logoEl.style.background = gradient;
                 logoEl.style.webkitBackgroundClip = "text";
                 logoEl.style.webkitTextFillColor = "transparent";
+                setIcpNumber(icpNumber);
+            }}
+
+            function setIcpNumber(icpNumber) {{
+                const value = (icpNumber || "").trim();
+                if (!value) {{
+                    icpRecordEl.hidden = true;
+                    icpLinkEl.textContent = "";
+                    return;
+                }}
+                icpLinkEl.textContent = value;
+                icpRecordEl.hidden = false;
             }}
         }})();
     </script>
